@@ -106,10 +106,10 @@ def _hex_to_rgba(hex_color, alpha=1.0):
 
 
 def _primary_module(gene, reg):
-    """First matching module from registry gene_groups."""
-    gene_groups = reg.get(gene, {}).get('gene_groups', [])
+    """First matching module from registry groups."""
+    groups = reg.get(gene, {}).get('groups', [])
     for mod in MODULE_PRIORITY:
-        if mod in gene_groups:
+        if mod in groups:
             return mod
     return 'none'
 
@@ -183,7 +183,7 @@ def _cytoscape_json(G, reg, edge_evidence):
         chrom = G.vp['chromosome'][v]
         mod = _primary_module(name, reg)
         rescue = reg.get(name, {}).get('rescue_logic', 'none')
-        groups = ', '.join(reg.get(name, {}).get('gene_groups', []))
+        groups = ', '.join(reg.get(name, {}).get('groups', []))
         info = f'{name}\nChromosome: {chrom}\nModule: {mod}\nGroups: {groups}\nRescue: {rescue}'
         nodes.append({
             'data': {

@@ -582,7 +582,7 @@ independently of the interaction graph.
 {
   "GENE_NAME": {
     "chromosome": "auto | X | Y | mito",
-    "gene_groups": ["group name 1", "group name 2"],
+    "groups": ["group name 1", "group name 2"],
     "analysis_origin": {
       "source":   "IBDmix_NHR | GWAS | eQTL | literature | manual",
       "analysis": "LabName_Method_Year",
@@ -599,7 +599,7 @@ independently of the interaction graph.
       "hg38": {"chrom": "chr17", "start": 45894553, "end": 46028334}
     },
     "rescue_logic": "rheostat | paralog_backup | partial | none",
-    "expression_contexts": ["neuron", "spermatid", "macrophage"],
+    "contexts": ["neuron", "spermatid", "macrophage"],
     "haplogroup_effect": "Free text describing Y haplogroup-dependent expression",
     "notes": "Free text for anything else"
   }
@@ -628,7 +628,7 @@ from gene_registry import (
 # Add a new gene
 add_gene('PRKY', {
     'chromosome': 'Y',
-    'gene_groups': ['cAMP/PKA module'],
+    'groups': ['cAMP/PKA module'],
     'rescue_logic': 'none',
     'haplogroup_effect': 'Haplogroup I: ~0.64-fold lower expression (Eales 2019)',
     'references': [{'pmid': '23640493', 'doi': '10.1161/ATVBAHA.113.301522'}],
@@ -649,7 +649,7 @@ candidates = get_rescue_candidates()
 summarise()
 
 # Enrich NetworkX graph nodes with registry attributes
-enrich_graph(G)   # adds chromosome, gene_groups, rescue_logic to G.nodes
+enrich_graph(G)   # adds chromosome, groups, rescue_logic to G.nodes
 ```
 
 ### Defined gene groups
@@ -786,13 +786,13 @@ Add or update a gene entry with full attribute support.
 |---|---|---|
 | `name` | str | Gene symbol |
 | `chromosome` | str | `'auto'`, `'X'`, `'Y'`, `'mito'` |
-| `gene_groups` | list[str] | Group memberships (appends, does not replace) |
+| `groups` | list[str] | Group memberships (appends, does not replace) |
 | `analysis_source` | str | `'IBDmix_NHR'`, `'GWAS'`, `'literature'`, etc. |
 | `analysis_name` | str | Specific analysis identifier |
 | `analysis_note` | str | Free text provenance note |
 | `coordinates` | dict | Auto-populated: `{'hg38': {'chrom': ..., 'start': ..., 'end': ...}}` |
 | `rescue_logic` | str | `'rheostat'`, `'paralog_backup'`, `'partial'`, `'none'` |
-| `expression_contexts` | list[str] | Tissue/cell type list |
+| `contexts` | list[str] | Tissue/cell type list |
 | `haplogroup_effect` | str | Y haplogroup-dependent expression note |
 | `notes` | str | Free text |
 | `pmid` | str | Reference PMID |
@@ -801,7 +801,7 @@ Add or update a gene entry with full attribute support.
 
 ---
 
-**`query_registry`**
+**`query_genes`**
 
 Filter the registry.
 
@@ -1117,7 +1117,7 @@ from gene_registry import (
     genes_by_group,   # genes belonging to a named group → GeneList
     get_interactors,      # interaction partners for a gene
     query_statements,     # filter statements by gene/type/context → list[dict]
-    query_registry,       # filter registry by gene/group/chrom → dict[str, dict]
+    query_genes,       # filter registry by gene/group/chrom → dict[str, dict]
 )
 ```
 
@@ -1127,7 +1127,7 @@ Returns the full registry entry for a gene, or `None` if not registered.
 
 ```python
 >>> get_gene_info('MAPT')
-{'chromosome': 'auto', 'gene_groups': ['MT lattice/transport'],
+{'chromosome': 'auto', 'groups': ['MT lattice/transport'],
  'notes': 'Microtubule-associated protein tau. ...'}
 ```
 
@@ -1181,36 +1181,49 @@ context, and references.
  ...]
 ```
 
-**`query_statements(gene=None, stmt_type=None, context=None, hypothesis_only=False) → list[dict]`**
+**`query_statements(intersection=True, **kwargs) → list[dict]`**
 
-Filter the statement store, returning matching raw statement dicts.
-All filters are optional and combine with AND logic.
+Filter the statement store using path-based regex kwargs. Kwarg names
+are underscore-separated paths into the nested statement dict — all
+possible splits are tried to handle keys that themselves contain
+underscores. Values are regexes (`re.search`, case-insensitive).
+Multiple filters combine with AND by default; set `intersection=False`
+for OR.
 
 ```python
->>> query_statements(stmt_type='Phosphorylation')
-[{'type': 'Phosphorylation', 'enz': {'name': 'PKA', ...}, 'sub': {'name': 'MAPT', ...}, ...}, ...]
+>>> query_statements(type='Phospho.*')
+[{'type': 'Phosphorylation', 'enz': {'name': 'PKA', ...}, ...}, ...]
 
->>> query_statements(gene='ADRA2C', context='cAMP')
-[{'type': 'Inhibition', 'subj': {'name': 'ADRA2C', ...}, ...}, ...]
+>>> query_statements(evidence_text='kinase')         # evidence[*].text
+>>> query_statements(subj_name='ADRA2C')             # subj.name
+>>> query_statements(evidence_annotations_context='cAMP', type='Activation')
+>>> query_statements(evidence_text_refs_PMID='10336') # evidence[*].text_refs.PMID
 
 >>> query_statements(hypothesis_only=True)
-[...]  # only statements with hypothesis evidence
+[...]  # statements where ≥1 evidence is flagged speculative
 ```
 
-**`query_registry(gene=None, group=None, chromosome=None, rescue_only=False, analysis=None) → dict[str, dict]`**
+**`query_genes(intersection=True, **kwargs) → dict[str, dict]`**
 
-Filter the gene registry, returning `{gene_name: attrs}` for matching entries.
-All filters are optional and combine with AND logic.
+Filter the gene registry using path-based regex kwargs. Same path
+resolution as `query_statements`. The special kwarg `gene` matches
+against the gene name (dict key) rather than a nested path.
 
 ```python
->>> query_registry(chromosome='X')
+>>> query_genes(chromosome='^X$')
 {'PRKX': {...}, 'HDAC6': {...}, 'RBMX': {...}, ...}
 
->>> query_registry(rescue_only=True)
-{'ADRA2C': {'rescue_logic': 'rheostat', ...}, 'PJA1': {'rescue_logic': 'rheostat', ...}, ...}
+>>> query_genes(groups='cAMP', chromosome='^X$')  # AND
+{'AKAP4': {...}, 'PJA1': {...}, 'PRKX': {...}}
 
->>> query_registry(group='cAMP/PKA module', chromosome='X')
-{'PRKX': {...}, ...}
+>>> query_genes(analysis_origin_source='IBDmix')
+{'ADRA2C': {...}, 'IRS2': {...}, ...}
+
+>>> query_genes(rescue_logic='rheostat')
+{'ADRA2C': {...}, 'PJA1': {...}}
+
+>>> query_genes(notes='rescue')
+{'ADRA2C': {...}, ...}
 ```
 
 ---

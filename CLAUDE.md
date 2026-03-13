@@ -318,7 +318,7 @@ belong in INDRA statements. The schema is:
 {
   "GENE_NAME": {
     "chromosome": "auto | X | Y | mito",
-    "gene_groups": ["cAMP/PKA module", "MT transport"],
+    "groups": ["cAMP/PKA module", "MT transport"],
     "analysis_origin": {
       "source":   "IBDmix_NHR | GWAS | eQTL | literature | manual",
       "analysis": "LabName_Method_Year | ...",
@@ -335,7 +335,7 @@ belong in INDRA statements. The schema is:
       "hg38": {"chrom": "chr17", "start": 45894553, "end": 46028334}
     },
     "rescue_logic": "rheostat | paralog_backup | pathway_neighbor | none",
-    "expression_contexts": ["neuron", "spermatid", "macrophage"],
+    "contexts": ["neuron", "spermatid", "macrophage"],
     "haplogroup_effect": "haplogroup I: 0.64-fold lower PRKY expression (Eales 2019)",
     "notes": "Free text"
   }
@@ -377,7 +377,7 @@ reg = load_registry()           # dict: gene_name → attributes
 # Add / update a gene
 add_gene('PRKY', {
     'chromosome': 'Y',
-    'gene_groups': ['cAMP/PKA module'],
+    'groups': ['cAMP/PKA module'],
     'analysis_origin': {
         'source': 'literature',
         'note': 'Y-linked PKA paralog; haplogroup I shows reduced expression'
@@ -393,7 +393,7 @@ mt_genes = get_group('MT lattice/transport')
 for node in G.nodes():
     info = reg.get(node, {})
     G.nodes[node]['chromosome']  = info.get('chromosome', 'unknown')
-    G.nodes[node]['gene_groups'] = info.get('gene_groups', [])
+    G.nodes[node]['groups'] = info.get('groups', [])
 ```
 
 ---
@@ -408,8 +408,8 @@ from gene_registry import (
     genes_by_context, # genes in statements with a context tag → GeneList
     genes_by_group,   # genes belonging to a named group → GeneList
     get_interactors,      # genes interacting with a gene → list[dict]
-    query_statements,     # filter statements by gene/type/context → list[dict]
-    query_registry,       # filter registry by gene/group/chrom → dict[str, dict]
+    query_statements,     # filter statements by nested path kwargs → list[dict]
+    query_genes,       # filter registry by nested path kwargs → dict[str, dict]
 )
 
 # Full gene info
@@ -431,13 +431,21 @@ genes = genes_by_group('MT lattice/transport')
 partners = get_interactors('PKA')
 # → [{'gene': 'MAPT', 'type': 'Phosphorylation', 'context': '...', 'refs': [...]}, ...]
 
-# Query statements (returns raw statement dicts)
-phos = query_statements(stmt_type='Phosphorylation')
-hyps = query_statements(hypothesis_only=True)
+# Query statements — kwargs are underscore-separated paths, values are regexes
+# AND by default; intersection=False for OR
+query_statements(type='Phospho.*')
+query_statements(evidence_text='kinase')
+query_statements(evidence_annotations_context='cAMP', type='Activation')
+query_statements(subj_name='ADRA2C')
+query_statements(evidence_text_refs_PMID='10336')
+query_statements(hypothesis_only=True)  # speculative, not yet peer-reviewed
 
-# Query registry (returns {gene: attrs} dict)
-x_genes = query_registry(chromosome='X')
-rescue = query_registry(rescue_only=True)
+# Query genes — same path-based kwargs
+query_genes(chromosome='^X$')
+query_genes(groups='cAMP', chromosome='^X$')
+query_genes(analysis_origin_source='IBDmix')
+query_genes(rescue_logic='rheostat')
+query_genes(notes='rescue')
 ```
 
 ---
@@ -586,7 +594,7 @@ The local MCP server (`mcp_server.py`) exposes these tools to Claude Code:
 | `list_statements_summary` | Counts by type, reference coverage, genes covered |
 | `enrich_from_indra_db` | Query public INDRA DB for a gene list (cached, preview only) |
 | `add_gene_to_registry` | Add/update gene with chromosome, groups, provenance, refs |
-| `query_registry` | Filter registry by gene, group, chromosome, rescue logic |
+| `query_genes` | Filter registry by gene, group, chromosome, rescue logic |
 | `get_gene_group` | List all members of a named group |
 | `list_registry_summary` | Full registry: chromosomes, groups, rescue candidates |
 | `render_network` | Rebuild and save the interaction graph PNG |

@@ -437,12 +437,12 @@ def enrich_from_indra_db(
 def add_gene_to_registry(
     name: str,
     chromosome: str,
-    gene_groups: Optional[list[str]] = None,
+    groups: Optional[list[str]] = None,
     analysis_source: Optional[str] = None,
     analysis_name: Optional[str] = None,
     analysis_note: Optional[str] = None,
     rescue_logic: Optional[str] = None,
-    expression_contexts: Optional[list[str]] = None,
+    contexts: Optional[list[str]] = None,
     haplogroup_effect: Optional[str] = None,
     notes: Optional[str] = None,
     pmid: Optional[str] = None,
@@ -460,12 +460,12 @@ def add_gene_to_registry(
     entry = reg.get(name, {})
 
     entry['chromosome'] = chromosome
-    if gene_groups:
-        existing = entry.get('gene_groups', [])
-        for g in gene_groups:
+    if groups:
+        existing = entry.get('groups', [])
+        for g in groups:
             if g not in existing:
                 existing.append(g)
-        entry['gene_groups'] = existing
+        entry['groups'] = existing
     if analysis_source or analysis_name or analysis_note:
         entry['analysis_origin'] = {
             k: v for k, v in {
@@ -476,8 +476,8 @@ def add_gene_to_registry(
         }
     if rescue_logic:
         entry['rescue_logic'] = rescue_logic
-    if expression_contexts:
-        entry['expression_contexts'] = expression_contexts
+    if contexts:
+        entry['contexts'] = contexts
     if haplogroup_effect:
         entry['haplogroup_effect'] = haplogroup_effect
     if notes:
@@ -520,7 +520,7 @@ def query_registry(
         items = [(n, a) for n, a in items if n == gene]
     if group:
         items = [(n, a) for n, a in items
-                 if group in a.get('gene_groups', [])]
+                 if group in a.get('groups', [])]
     if chromosome:
         items = [(n, a) for n, a in items
                  if a.get('chromosome') == chromosome]
@@ -536,7 +536,7 @@ def query_registry(
 
     lines = [f'{len(items)} gene(s) found:\n']
     for name, attrs in items:
-        groups = ', '.join(attrs.get('gene_groups', [])) or '—'
+        groups = ', '.join(attrs.get('groups', [])) or '—'
         chrom  = attrs.get('chromosome', '?')
         rescue = attrs.get('rescue_logic', 'none')
         origin = (attrs.get('analysis_origin') or {}).get('analysis', '—')
@@ -560,7 +560,7 @@ def get_gene_group(group_name: str) -> str:
     """Return all genes belonging to a named group."""
     reg = _load_registry()
     members = [n for n, a in reg.items()
-               if group_name in a.get('gene_groups', [])]
+               if group_name in a.get('groups', [])]
     if not members:
         return f'No genes found in group "{group_name}".'
     return f'Group "{group_name}" ({len(members)} genes):\n  ' + \
@@ -585,7 +585,7 @@ def list_registry_summary() -> str:
 
     all_groups: dict[str, list] = {}
     for name, attrs in reg.items():
-        for g in attrs.get('gene_groups', []):
+        for g in attrs.get('groups', []):
             all_groups.setdefault(g, []).append(name)
 
     rescue = [n for n, a in reg.items()
@@ -685,12 +685,12 @@ def gene_info(gene: str) -> str:
         reg_section = f'{gene} is not in the registry.'
     else:
         lines = [f'{gene} [{info.get("chromosome", "?")}]']
-        if info.get('gene_groups'):
-            lines.append(f'  groups:       {", ".join(info["gene_groups"])}')
+        if info.get('groups'):
+            lines.append(f'  groups:       {", ".join(info["groups"])}')
         if info.get('rescue_logic') and info['rescue_logic'] != 'none':
             lines.append(f'  rescue:       {info["rescue_logic"]}')
-        if info.get('expression_contexts'):
-            lines.append(f'  expression:   {", ".join(info["expression_contexts"])}')
+        if info.get('contexts'):
+            lines.append(f'  expression:   {", ".join(info["contexts"])}')
         if info.get('haplogroup_effect'):
             lines.append(f'  haplogroup:   {info["haplogroup_effect"]}')
         origin = info.get('analysis_origin')

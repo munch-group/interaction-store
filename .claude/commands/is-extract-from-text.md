@@ -84,7 +84,7 @@ persist_extracted(indices=[3], hypothesis=True)
 ### Step 5 — Registry update
 
 For any genes not yet in the registry, call `add_gene_to_registry` with
-at minimum: name, chromosome. Add gene_groups if the interaction fits an
+at minimum: name, chromosome. Add groups if the interaction fits an
 existing module.
 
 ### Step 6 — Corrections

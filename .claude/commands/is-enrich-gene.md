@@ -25,8 +25,8 @@ Follow this process:
 
 6. **Update registry** — ensure the gene has:
    - Correct `chromosome` field
-   - Appropriate `gene_groups`
-   - `expression_contexts` if known
+   - Appropriate `groups`
+   - `contexts` if known
    - Any literature references via `add_gene_to_registry`
 
 7. **Summarise** — report what was added and what remains hypothetical.

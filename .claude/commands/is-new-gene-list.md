@@ -35,7 +35,7 @@ Steps:
 5. **Register all genes** — call `add_gene_to_registry` for each new
    gene with:
    - `chromosome`
-   - `gene_groups` (at minimum `[analysis_name]` as a group)
+   - `groups` (at minimum `[analysis_name]` as a group)
    - `analysis_source`, `analysis_name`, `analysis_note`
 
 6. **Identify priority interactions** — for genes with clear connections
