@@ -3,6 +3,64 @@
 This document describes the schema, conventions, and API for the INDRA-based
 interaction store used for exploratory mechanistic research in the Munch group.
 
+## 0. Scientific integrity rules
+
+This is a research tool. All information added to the store must be
+traceable to a verifiable source. The following rules are mandatory:
+
+1. **Never fabricate citations.** Do not guess author names, paper titles,
+   or publication details. Either look up metadata via an API (CrossRef,
+   PubMed) or use the DOI/PMID as-is.
+
+2. **Never fabricate gene functions or interactions.** If describing a
+   gene's biology, state the source (INDRA DB, a specific paper, or the
+   user). If unsure, say so explicitly rather than presenting a guess as
+   fact.
+
+3. **Distinguish fact from inference.** When suggesting interactions or
+   functional groupings based on general knowledge, clearly label these
+   as hypotheses (`hypothesis=True`) and flag them as such in text output.
+   Never present an inference as established biology.
+
+4. **Do not augment user-provided data.** Store user inputs verbatim.
+   Do not "improve" gene names, modify evidence text, or add details
+   the user did not provide unless explicitly asked.
+
+5. **Cite databases, not training data.** When making claims about gene
+   function, pathway membership, or protein interactions, back them with
+   a query to INDRA DB, UniProt, or another programmatic source — not
+   from memory. If no programmatic source is available, state the claim
+   is unverified.
+
+6. **Every non-INDRA statement must have a peer-reviewed reference.**
+   Statements retrieved from the INDRA DB already carry PMIDs. For any
+   statement added outside of INDRA DB results, a PMID or DOI to a
+   peer-reviewed publication is **required** — do not add the statement
+   without one. The only exception is when the user explicitly provides
+   information and references from their own analyses. Never add
+   statements based on inference, training-data knowledge, or "general
+   biology" reasoning alone.
+
+7. **References must directly support the specific claim.** A reference
+   is only valid if it demonstrates the specific agents and interaction
+   type in the statement. Do not attach papers that cover a related but
+   different claim (e.g. a different subunit, a different cargo, or a
+   broader pathway). If no paper directly supports the specific
+   statement, do not attach a reference.
+
+8. **Mandatory verification workflow for every new statement.** Before
+   adding any statement, follow this sequence:
+   a. Query INDRA DB for the interaction — if found with PMIDs, use
+      the INDRA-backed version directly.
+   b. If not in INDRA DB, search PubMed/literature for a paper that
+      directly demonstrates the specific interaction. Attach its
+      PMID/DOI.
+   c. If no published evidence can be found, ask the user whether they
+      have evidence from their own analyses. If so, record their
+      reference. If not, do **not** add the statement.
+
+---
+
 Three persistent data files live alongside this document:
 
 | File | Contents |
@@ -205,7 +263,8 @@ Evidence(
 ### Convenience wrapper (current)
 
 ```python
-def ev(text, pmid=None, doi=None, context=None, hypothesis=False, direct=True):
+def ev(text, pmid=None, doi=None, context=None, hypothesis=False, direct=True,
+       species='Homo_sapiens'):
     text_refs = {}
     if pmid: text_refs['PMID'] = str(pmid)
     if doi:  text_refs['DOI']  = doi
@@ -218,6 +277,7 @@ def ev(text, pmid=None, doi=None, context=None, hypothesis=False, direct=True):
             'date':       str(date.today()),
             'context':    context,
             'directness': 'direct' if direct else 'indirect',
+            'species':    species,
         },
         epistemics={'hypothesis': hypothesis},
     )
@@ -260,8 +320,8 @@ belong in INDRA statements. The schema is:
     "chromosome": "auto | X | Y | mito",
     "gene_groups": ["cAMP/PKA module", "MT transport"],
     "analysis_origin": {
-      "source":   "IBDmix_NHR | manual | GWAS | literature",
-      "analysis": "Tishkoff_IBDmix_2026 | ...",
+      "source":   "IBDmix_NHR | GWAS | eQTL | literature | manual",
+      "analysis": "LabName_Method_Year | ...",
       "note":     "Free text describing how this gene entered the network"
     },
     "references": [
@@ -271,6 +331,9 @@ belong in INDRA statements. The schema is:
         "note":  "Key paper establishing this gene's role"
       }
     ],
+    "coordinates": {
+      "hg38": {"chrom": "chr17", "start": 45894553, "end": 46028334}
+    },
     "rescue_logic": "rheostat | paralog_backup | pathway_neighbor | none",
     "expression_contexts": ["neuron", "spermatid", "macrophage"],
     "haplogroup_effect": "haplogroup I: 0.64-fold lower PRKY expression (Eales 2019)",
@@ -300,7 +363,6 @@ belong in INDRA statements. The schema is:
 | `Centriolar/manchette` | SPATC1, OFD1 |
 | `NF-κB signalling` | EDA, HIVEP3 |
 | `Phosphoinositide` | TPTE, OCRL, IRS2 |
-| `IBDmix NHR candidates` | HIVEP3, FGGY, RASGRP3, SORCS3, MYO16, IRS2, BTBD3, XRN2, NKX2-4, RBMX2, HCN1, TPTE, POTED, ADRA2C, OTOP1, TMEM128, MAF1, SPATC1 |
 
 ---
 
@@ -332,6 +394,50 @@ for node in G.nodes():
     info = reg.get(node, {})
     G.nodes[node]['chromosome']  = info.get('chromosome', 'unknown')
     G.nodes[node]['gene_groups'] = info.get('gene_groups', [])
+```
+
+---
+
+### Browsing helpers (gene_registry.py)
+
+```python
+from gene_registry import (
+    get_gene_info,        # full registry entry for one gene → dict | None
+    get_all_groups,       # {group_name: [gene, ...]} → dict
+    get_all_contexts,     # {context_tag: count} from statement store → dict
+    genes_by_context, # genes in statements with a context tag → GeneList
+    genes_by_group,   # genes belonging to a named group → GeneList
+    get_interactors,      # genes interacting with a gene → list[dict]
+    query_statements,     # filter statements by gene/type/context → list[dict]
+    query_registry,       # filter registry by gene/group/chrom → dict[str, dict]
+)
+
+# Full gene info
+info = get_gene_info('MAPT')
+
+# All groups and members
+groups = get_all_groups()
+
+# Context tags with counts
+contexts = get_all_contexts()
+
+# Genes in a context (returns GeneList)
+genes = genes_by_context('cAMP/PKA')
+
+# Genes in a group (returns GeneList)
+genes = genes_by_group('MT lattice/transport')
+
+# Interaction partners
+partners = get_interactors('PKA')
+# → [{'gene': 'MAPT', 'type': 'Phosphorylation', 'context': '...', 'refs': [...]}, ...]
+
+# Query statements (returns raw statement dicts)
+phos = query_statements(stmt_type='Phosphorylation')
+hyps = query_statements(hypothesis_only=True)
+
+# Query registry (returns {gene: attrs} dict)
+x_genes = query_registry(chromosome='X')
+rescue = query_registry(rescue_only=True)
 ```
 
 ---
@@ -484,6 +590,11 @@ The local MCP server (`mcp_server.py`) exposes these tools to Claude Code:
 | `get_gene_group` | List all members of a named group |
 | `list_registry_summary` | Full registry: chromosomes, groups, rescue candidates |
 | `render_network` | Rebuild and save the interaction graph PNG |
+| `list_contexts` | List all context tags in the statement store with counts |
+| `genes_by_context` | List genes appearing in statements with a given context |
+| `gene_interactions` | List all interactions for a specific gene |
+| `gene_info` | Show full registry + interaction info for a gene |
+| `list_groups` | List all gene groups with their members |
 
 ### Starting the server
 
@@ -499,11 +610,12 @@ pixi run mcp-debug  # SSE on port 8765 (debugging)
 
 | Command | Usage |
 |---|---|
-| `/project:add-interaction GENE_A GENE_B` | Reason about and encode an interaction |
-| `/project:enrich-gene GENE` | Query INDRA DB and update registry |
-| `/project:rescue-analysis GENE_A GENE_B` | Assess rescue candidacy |
-| `/project:render-network [GENE]` | Rebuild graph, optionally highlighting a gene |
-| `/project:new-gene-list GENE1 GENE2 ...` | Onboard a batch from an analysis run |
+| `/is-add-interaction GENE_A GENE_B` | Reason about and encode an interaction |
+| `/is-enrich-gene GENE` | Query INDRA DB and update registry |
+| `/is-rescue-analysis GENE_A GENE_B` | Assess rescue candidacy |
+| `/is-render-network [GENE]` | Rebuild graph, optionally highlighting a gene |
+| `/is-new-gene-list GENE1 GENE2 ...` | Onboard a batch from an analysis run |
+| `/is-browse [contexts\|context TAG\|gene GENE\|interactions GENE\|groups]` | Browse and list store contents |
 
 ---
 

@@ -7,10 +7,16 @@ analysis provenance (e.g. a new IBDmix run, GWAS hit list, etc.).
 
 Steps:
 
-1. **Establish provenance** — ask for:
-   - Analysis name (e.g. `Tishkoff_IBDmix_2026`, `GWAS_PGC3`)
-   - Source type: `IBDmix_NHR | GWAS | eQTL | literature | manual`
-   - Any shared note (e.g. "NHR candidates from sub-Saharan African cohort")
+1. **Establish provenance** — ask the user ONE question at a time.
+   Do NOT suggest or guess values — let the user type them.
+   After each answer, move to the next question.
+   a. "What is the **analysis name**? (format: `LabName_Method_Year`)"
+   b. "What is the **source type**? (one of: `IBDmix_NHR`, `GWAS`, `eQTL`, `literature`, `manual`)"
+   c. "Any **shared note** or reference (DOI/PMID) for this batch? (or skip)"
+
+   If the user provides all provenance fields in a single message
+   (e.g. alongside the gene list or as comma-separated values),
+   extract them and confirm — no need to ask again.
 
 2. **Check existing coverage** — call `query_registry` for each gene.
    Report which are already in the registry and which are new.

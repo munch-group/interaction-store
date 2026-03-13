@@ -95,7 +95,7 @@ def _make_agent(name: str, hgnc: str = None, up: str = None):
 
 def _make_evidence(text: str, pmid: str = None, doi: str = None,
                    context: str = None, hypothesis: bool = False,
-                   direct: bool = True):
+                   direct: bool = True, species: str = 'Homo_sapiens'):
     from indra.statements import Evidence
     text_refs = {}
     if pmid: text_refs['PMID'] = str(pmid)
@@ -109,9 +109,27 @@ def _make_evidence(text: str, pmid: str = None, doi: str = None,
             'date':       str(date.today()),
             'context':    context or 'exploratory',
             'directness': 'direct' if direct else 'indirect',
+            'species':    species,
         },
         epistemics={'hypothesis': hypothesis},
     )
+
+
+# ── genome coordinates ─────────────────────────────────────────────────────────
+
+def _lookup_coords(gene_name: str) -> dict:
+    """Look up genome coordinates. Currently supports hg38 via geneinfo;
+    additional assemblies can be added here as geneinfo gains support."""
+    coords = {}
+    try:
+        from geneinfo.coords import gene_coords
+        hits = gene_coords(gene_name, 'hg38')
+        if hits:
+            chrom, start, end, _ = hits[0]
+            coords['hg38'] = {'chrom': chrom, 'start': start, 'end': end}
+    except Exception:
+        pass
+    return coords
 
 
 # ── server ────────────────────────────────────────────────────────────────────
@@ -145,6 +163,7 @@ def add_statement(
     position: Optional[str] = None,
     subject_hgnc: Optional[str] = None,
     object_hgnc: Optional[str] = None,
+    species: str = 'Homo_sapiens',
 ) -> str:
     """
     Add a new INDRA statement to the persistent store.
@@ -159,6 +178,8 @@ def add_statement(
 
     For Complex, subject and object are the two primary members.
     For modifications, subject=enzyme, object=substrate.
+    species defaults to 'Homo_sapiens'. Use e.g. 'Mus_musculus',
+    'Pan_troglodytes' for non-human evidence.
     """
     import indra.statements as IS
 
@@ -170,7 +191,7 @@ def add_statement(
     obj  = _make_agent(object,  hgnc=object_hgnc)
     ev   = _make_evidence(evidence_text, pmid=pmid, doi=doi,
                           context=context, hypothesis=hypothesis,
-                          direct=direct)
+                          direct=direct, species=species)
 
     # Build statement — handle type families
     mod_types = {
@@ -461,6 +482,11 @@ def add_gene_to_registry(
         entry['haplogroup_effect'] = haplogroup_effect
     if notes:
         entry['notes'] = notes
+    # Auto-populate genome coordinates if not already present
+    if 'coordinates' not in entry:
+        coords = _lookup_coords(name)
+        if coords:
+            entry['coordinates'] = coords
     if pmid or doi:
         refs = entry.get('references', [])
         refs.append({k: v for k, v in {
@@ -588,6 +614,128 @@ def list_registry_summary() -> str:
         for analysis, genes in sorted(origins.items()):
             lines.append(f'  {analysis}: {", ".join(sorted(genes))}')
 
+    return '\n'.join(lines)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# BROWSING TOOLS
+# ════════════════════════════════════════════════════════════════════════════
+
+@mcp.tool
+def list_contexts() -> str:
+    """
+    List all context tags used in the statement store with counts.
+    """
+    from gene_registry import get_all_contexts
+    contexts = get_all_contexts(str(STORE_PATH))
+    if not contexts:
+        return 'No context tags found.'
+    lines = [f'{len(contexts)} context tags:\n']
+    for ctx, n in sorted(contexts.items(), key=lambda x: -x[1]):
+        lines.append(f'  {n:3d}  {ctx}')
+    return '\n'.join(lines)
+
+
+@mcp.tool
+def genes_by_context(context: str) -> str:
+    """
+    List all genes appearing in statements with a given context tag.
+    Case-insensitive substring match.
+    """
+    from gene_registry import genes_by_context as _genes_by_context
+    genes = list(_genes_by_context(context, str(STORE_PATH)))
+    if not genes:
+        return f'No genes found for context "{context}".'
+    return (
+        f'Context "{context}" — {len(genes)} gene(s):\n'
+        f'  {", ".join(genes)}'
+    )
+
+
+@mcp.tool
+def gene_interactions(gene: str) -> str:
+    """
+    List all genes that interact with a specific gene in the store,
+    with statement type, context, and references.
+    """
+    from gene_registry import get_interactors
+    hits = get_interactors(gene, str(STORE_PATH))
+    if not hits:
+        return f'No interactions found for {gene}.'
+    lines = [f'{gene} — {len(hits)} interaction(s):\n']
+    for h in hits:
+        ref_str = ', '.join(h['refs']) if h['refs'] else 'none'
+        lines.append(
+            f'  [{h["type"]}] {gene} — {h["gene"]}\n'
+            f'    context: {h["context"]}\n'
+            f'    refs:    {ref_str}'
+        )
+    return '\n'.join(lines)
+
+
+@mcp.tool
+def gene_info(gene: str) -> str:
+    """
+    Show all recorded information about a gene: registry entry
+    plus all statements involving it.
+    """
+    from gene_registry import get_gene_info, get_interactors
+    info = get_gene_info(gene)
+    if info is None:
+        reg_section = f'{gene} is not in the registry.'
+    else:
+        lines = [f'{gene} [{info.get("chromosome", "?")}]']
+        if info.get('gene_groups'):
+            lines.append(f'  groups:       {", ".join(info["gene_groups"])}')
+        if info.get('rescue_logic') and info['rescue_logic'] != 'none':
+            lines.append(f'  rescue:       {info["rescue_logic"]}')
+        if info.get('expression_contexts'):
+            lines.append(f'  expression:   {", ".join(info["expression_contexts"])}')
+        if info.get('haplogroup_effect'):
+            lines.append(f'  haplogroup:   {info["haplogroup_effect"]}')
+        origin = info.get('analysis_origin')
+        if origin:
+            lines.append(f'  analysis:     {origin.get("analysis", "")} ({origin.get("source", "")})')
+            if origin.get('note'):
+                lines.append(f'                {origin["note"]}')
+        refs = info.get('references', [])
+        if refs:
+            lines.append(f'  references:')
+            for r in refs:
+                ref_id = r.get('doi') or r.get('pmid', '?')
+                note = r.get('note', '')
+                lines.append(f'    {ref_id}  {note}')
+        if info.get('notes'):
+            lines.append(f'  notes:        {info["notes"]}')
+        reg_section = '\n'.join(lines)
+
+    # Interactions
+    hits = get_interactors(gene, str(STORE_PATH))
+    if hits:
+        int_lines = [f'\n{len(hits)} interaction(s):']
+        for h in hits:
+            ref_str = ', '.join(h['refs']) if h['refs'] else 'none'
+            int_lines.append(
+                f'  [{h["type"]}] {gene} — {h["gene"]}  ({h["context"]})  refs: {ref_str}'
+            )
+        interaction_section = '\n'.join(int_lines)
+    else:
+        interaction_section = '\nNo interactions in the store.'
+
+    return reg_section + interaction_section
+
+
+@mcp.tool
+def list_groups() -> str:
+    """List all gene groups in the registry with their members."""
+    from gene_registry import get_all_groups
+    groups = get_all_groups()
+    if not groups:
+        return 'No groups found.'
+    lines = [f'{len(groups)} group(s):\n']
+    for name, members in groups.items():
+        lines.append(f'  [{name}] ({len(members)})')
+        lines.append(f'    {", ".join(members)}')
     return '\n'.join(lines)
 
 

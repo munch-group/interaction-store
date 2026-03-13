@@ -6,7 +6,7 @@ mechanistic gene interactions during exploratory research, built on the
 
 **Status:** Active development — Munch Group, Aarhus University  
 **Current focus:** Sex-chromosome gene biology, microtubule-based transport,
-Neanderthal introgression analysis (Tishkoff IBDmix 2026)
+archaic introgression analysis
 
 ---
 
@@ -84,11 +84,11 @@ project/
 │
 └── .claude/
     └── commands/
-        ├── add-interaction.md   /project:add-interaction
-        ├── enrich-gene.md       /project:enrich-gene
-        ├── rescue-analysis.md   /project:rescue-analysis
-        ├── render-network.md    /project:render-network
-        └── new-gene-list.md     /project:new-gene-list
+        ├── add-interaction.md   /is-add-interaction
+        ├── enrich-gene.md       /is-enrich-gene
+        ├── rescue-analysis.md   /is-rescue-analysis
+        ├── render-network.md    /is-render-network
+        └── new-gene-list.md     /is-new-gene-list
 ```
 
 The two JSON files (`statements.json`, `gene_registry.json`) are the
@@ -486,6 +486,7 @@ Evidence(
         'context':          'cAMP/PKA module',
         'directness':       'direct',       # see §17.1
         'rescue_candidate': True,           # see §17.2
+        'species':          'Homo_sapiens', # defaults to Homo_sapiens
     },
     epistemics = {
         'hypothesis': False,      # True if speculative / not yet confirmed
@@ -506,6 +507,7 @@ def ev(
     context:    str  = None,
     hypothesis: bool = False,
     direct:     bool = True,
+    species:    str  = 'Homo_sapiens',
 ) -> Evidence:
     text_refs = {}
     if pmid: text_refs['PMID'] = str(pmid)
@@ -519,6 +521,7 @@ def ev(
             'date':       str(date.today()),
             'context':    context or 'exploratory',
             'directness': 'direct' if direct else 'indirect',
+            'species':    species,
         },
         epistemics={'hypothesis': hypothesis},
     )
@@ -582,7 +585,7 @@ independently of the interaction graph.
     "gene_groups": ["group name 1", "group name 2"],
     "analysis_origin": {
       "source":   "IBDmix_NHR | GWAS | eQTL | literature | manual",
-      "analysis": "Tishkoff_IBDmix_2026",
+      "analysis": "LabName_Method_Year",
       "note":     "Free text: how this gene entered the network"
     },
     "references": [
@@ -592,6 +595,9 @@ independently of the interaction graph.
         "note": "Key paper establishing role"
       }
     ],
+    "coordinates": {
+      "hg38": {"chrom": "chr17", "start": 45894553, "end": 46028334}
+    },
     "rescue_logic": "rheostat | paralog_backup | partial | none",
     "expression_contexts": ["neuron", "spermatid", "macrophage"],
     "haplogroup_effect": "Free text describing Y haplogroup-dependent expression",
@@ -658,7 +664,7 @@ enrich_graph(G)   # adds chromosome, gene_groups, rescue_logic to G.nodes
 | `Centriolar/manchette` | SPATC1, OFD1 |
 | `NF-κB signalling` | EDA, HIVEP3, NFKB1 |
 | `Phosphoinositide` | TPTE, OCRL, IRS2, AKT1 |
-| `IBDmix NHR candidates` | 20 genes from Tishkoff IBDmix 2026 analysis |
+| *(analysis-specific groups)* | Created automatically when onboarding gene lists |
 
 ---
 
@@ -784,6 +790,7 @@ Add or update a gene entry with full attribute support.
 | `analysis_source` | str | `'IBDmix_NHR'`, `'GWAS'`, `'literature'`, etc. |
 | `analysis_name` | str | Specific analysis identifier |
 | `analysis_note` | str | Free text provenance note |
+| `coordinates` | dict | Auto-populated: `{'hg38': {'chrom': ..., 'start': ..., 'end': ...}}` |
 | `rescue_logic` | str | `'rheostat'`, `'paralog_backup'`, `'partial'`, `'none'` |
 | `expression_contexts` | list[str] | Tissue/cell type list |
 | `haplogroup_effect` | str | Y haplogroup-dependent expression note |
@@ -857,6 +864,56 @@ Clears `pending_extraction.json` after persisting.
 
 ---
 
+#### Browsing tools
+
+---
+
+**`list_contexts`**
+
+List all context tags used in the statement store, with counts.
+No parameters. Returns tags sorted by frequency.
+
+---
+
+**`genes_by_context`**
+
+List all genes appearing in statements with a given context tag.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `context` | str | Context tag (case-insensitive substring match) |
+
+---
+
+**`gene_interactions`**
+
+List all interaction partners for a specific gene, with statement type,
+context, and references.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `gene` | str | Gene symbol |
+
+---
+
+**`gene_info`**
+
+Show everything recorded about a gene: full registry entry (chromosome,
+groups, analysis origin, references, notes) plus all interactions from
+the statement store.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `gene` | str | Gene symbol |
+
+---
+
+**`list_groups`**
+
+List all gene groups in the registry with their members. No parameters.
+
+---
+
 #### Graph tools
 
 ---
@@ -875,11 +932,12 @@ Rebuild the interaction graph from the current store and save as PNG.
 ## 11. Claude Code slash commands
 
 Slash commands live in `.claude/commands/` and are invoked as
-`/project:command-name ARGUMENTS`. Each command is a Markdown prompt
-template that instructs Claude Code to use the MCP tools in a specific
-workflow.
+`/is-command-name ARGUMENTS`. All interaction store commands use the
+`is-` prefix so they are easy to find via tab completion. Each command
+is a Markdown prompt template that instructs Claude Code to use the MCP
+tools in a specific workflow.
 
-### `/project:add-interaction GENE_A GENE_B`
+### `/is-add-interaction GENE_A GENE_B`
 
 **Purpose:** Reason about and encode an interaction between two genes.
 
@@ -892,13 +950,13 @@ either gene is new → reports the result.
 literature, database enrichment, or exploratory reasoning.
 
 ```
-/project:add-interaction IRS2 MAP7D3
-/project:add-interaction ADRA2C PJA1
+/is-add-interaction IRS2 MAP7D3
+/is-add-interaction ADRA2C PJA1
 ```
 
 ---
 
-### `/project:enrich-gene GENE`
+### `/is-enrich-gene GENE`
 
 **Purpose:** Query INDRA DB for a gene and identify gaps between
 database knowledge and the current store.
@@ -909,13 +967,13 @@ which are not yet in the store → proposes `add_statement` calls →
 asks for confirmation before persisting → updates registry.
 
 ```
-/project:enrich-gene SORCS3
-/project:enrich-gene HDAC6
+/is-enrich-gene SORCS3
+/is-enrich-gene HDAC6
 ```
 
 ---
 
-### `/project:rescue-analysis GENE_A GENE_B`
+### `/is-rescue-analysis GENE_A GENE_B`
 
 **Purpose:** Formally assess whether altered expression of one gene
 could rescue loss of the other.
@@ -927,13 +985,13 @@ states the verdict with mechanism and caveats → updates annotations
 or appends supporting evidence → compares to existing rescue candidates.
 
 ```
-/project:rescue-analysis IRS2 MAP7D3
-/project:rescue-analysis RBMX2 RBMX
+/is-rescue-analysis IRS2 MAP7D3
+/is-rescue-analysis RBMX2 RBMX
 ```
 
 ---
 
-### `/project:render-network [GENE]`
+### `/is-render-network [GENE]`
 
 **Purpose:** Rebuild and save the interaction network graph.
 
@@ -942,13 +1000,13 @@ reports output path, node/edge counts, and module coverage → identifies
 isolated nodes and suggests priority additions.
 
 ```
-/project:render-network
-/project:render-network ADRA2C
+/is-render-network
+/is-render-network ADRA2C
 ```
 
 ---
 
-### `/project:extract-from-text TEXT [reader=...] [pmid=...] [context=...]`
+### `/is-extract-from-text TEXT [reader=...] [pmid=...] [context=...]`
 
 **Purpose:** Extract INDRA statements from natural language text, review
 them, and selectively persist to the store.
@@ -968,13 +1026,13 @@ genes → notes any corrections needed for misgrounded agents.
 | `reach_local` | localhost:8080 | Offline; bulk; when remote is down |
 
 ```
-/project:extract-from-text "ADRA2C inhibits adenylyl cyclase via Gi"
-/project:extract-from-text "GSK3β phosphorylates tau at Thr231" reader=reach pmid=12345678
+/is-extract-from-text "ADRA2C inhibits adenylyl cyclase via Gi"
+/is-extract-from-text "GSK3β phosphorylates tau at Thr231" reader=reach pmid=12345678
 ```
 
 ---
 
-### `/project:new-gene-list GENE1 GENE2 ...`
+### `/is-new-gene-list GENE1 GENE2 ...`
 
 **Purpose:** Onboard a batch of genes from a new analysis run.
 
@@ -985,7 +1043,31 @@ false-positive introgression signals → registers all genes → identifies
 priority interactions worth encoding next.
 
 ```
-/project:new-gene-list HIVEP3 FGGY RASGRP3 HCN1 BTBD3 DOCK2
+/is-new-gene-list HIVEP3 FGGY RASGRP3 HCN1 BTBD3 DOCK2
+```
+
+---
+
+### `/is-browse [subcommand] [argument]`
+
+**Purpose:** Browse and list information from the store.
+
+**Subcommands:**
+
+| Subcommand | Description |
+|---|---|
+| `contexts` | List all context tags with counts |
+| `context <TAG>` | List genes in a context |
+| `gene <GENE>` | Show full info about a gene (registry + interactions) |
+| `interactions <GENE>` | List a gene's interaction partners |
+| `groups` | List all gene groups with members |
+
+```
+/is-browse contexts
+/is-browse context cAMP/PKA
+/is-browse gene MAPT
+/is-browse interactions PKA
+/is-browse groups
 ```
 
 ---
@@ -1019,6 +1101,116 @@ path_between('ADRA2C', 'MT_lattice')
 
 # All statements involving a gene
 stmts = stmts_for('IRS2')
+```
+
+### Browsing helpers (`gene_registry.py`)
+
+These functions return Python data structures, suitable for notebook
+use, scripting, and programmatic access.
+
+```python
+from gene_registry import (
+    get_gene_info,        # full registry entry for one gene
+    get_all_groups,       # all groups with their members
+    get_all_contexts,     # context tags with counts
+    genes_by_context, # genes in statements with a context tag → GeneList
+    genes_by_group,   # genes belonging to a named group → GeneList
+    get_interactors,      # interaction partners for a gene
+    query_statements,     # filter statements by gene/type/context → list[dict]
+    query_registry,       # filter registry by gene/group/chrom → dict[str, dict]
+)
+```
+
+**`get_gene_info(gene) → dict | None`**
+
+Returns the full registry entry for a gene, or `None` if not registered.
+
+```python
+>>> get_gene_info('MAPT')
+{'chromosome': 'auto', 'gene_groups': ['MT lattice/transport'],
+ 'notes': 'Microtubule-associated protein tau. ...'}
+```
+
+**`get_all_groups() → dict[str, list[str]]`**
+
+Returns `{group_name: [gene, ...]}` for every group in the registry.
+
+```python
+>>> get_all_groups()
+{'cAMP/PKA module': ['ADRA2C', 'AKAP4', 'PJA1', 'PRKX', 'PRKY'],
+ 'gametologs': ['PRKX', 'PRKY'], ...}
+```
+
+**`get_all_contexts(store_path='statements.json') → dict[str, int]`**
+
+Returns `{context_tag: count}` from the statement store.
+
+```python
+>>> get_all_contexts()
+{'cAMP/PKA module': 3, 'exploratory': 21, ...}
+```
+
+**`genes_by_context(context, store_path='statements.json') → GeneList`**
+
+Returns genes appearing in statements with the given context tag
+(case-insensitive substring match) as a `geneinfo.genelist.GeneList`.
+
+```python
+>>> genes_by_context('cAMP/PKA')
+GeneList(['ADCY', 'ADRA2C', 'AKAP4', 'PKA', 'PJA1', 'PRKX', 'cAMP'])
+```
+
+**`genes_by_group(group_name, path=REGISTRY_PATH) → GeneList`**
+
+Returns all genes belonging to a named group as a `geneinfo.genelist.GeneList`.
+
+```python
+>>> genes_by_group('MT lattice/transport')
+GeneList(['DYNLT3', 'HDAC6', 'MAP7D3', 'MAPT'])
+```
+
+**`get_interactors(gene, store_path='statements.json') → list[dict]`**
+
+Returns all genes that interact with the given gene, with statement type,
+context, and references.
+
+```python
+>>> get_interactors('PKA')
+[{'gene': 'cAMP', 'type': 'Activation', 'context': 'cAMP/PKA module', 'refs': ['PMID:7803765']},
+ {'gene': 'MAPT', 'type': 'Phosphorylation', 'context': 'cAMP/PKA → tau → MT lattice', 'refs': ['PMID:38492709']},
+ ...]
+```
+
+**`query_statements(gene=None, stmt_type=None, context=None, hypothesis_only=False) → list[dict]`**
+
+Filter the statement store, returning matching raw statement dicts.
+All filters are optional and combine with AND logic.
+
+```python
+>>> query_statements(stmt_type='Phosphorylation')
+[{'type': 'Phosphorylation', 'enz': {'name': 'PKA', ...}, 'sub': {'name': 'MAPT', ...}, ...}, ...]
+
+>>> query_statements(gene='ADRA2C', context='cAMP')
+[{'type': 'Inhibition', 'subj': {'name': 'ADRA2C', ...}, ...}, ...]
+
+>>> query_statements(hypothesis_only=True)
+[...]  # only statements with hypothesis evidence
+```
+
+**`query_registry(gene=None, group=None, chromosome=None, rescue_only=False, analysis=None) → dict[str, dict]`**
+
+Filter the gene registry, returning `{gene_name: attrs}` for matching entries.
+All filters are optional and combine with AND logic.
+
+```python
+>>> query_registry(chromosome='X')
+{'PRKX': {...}, 'HDAC6': {...}, 'RBMX': {...}, ...}
+
+>>> query_registry(rescue_only=True)
+{'ADRA2C': {'rescue_logic': 'rheostat', ...}, 'PJA1': {'rescue_logic': 'rheostat', ...}, ...}
+
+>>> query_registry(group='cAMP/PKA module', chromosome='X')
+{'PRKX': {...}, ...}
 ```
 
 ---
@@ -1171,13 +1363,13 @@ your own reasoning, and want to let the NLP reader do the initial parsing:
 
 1. Use canonical gene symbols in the text (e.g. GSK3B not GSK-3β)
 2. One mechanism per sentence for best accuracy
-3. Run extraction: `/project:extract-from-text "sentence" reader=trips`
+3. Run extraction: `/is-extract-from-text "sentence" reader=trips`
 4. Review the numbered preview — check agent names, type, polarity
 5. Persist only the statements that look correct
 6. Manually correct any misgrounded agents with `add_statement`
 
 ```
-/project:extract-from-text "PJA1 ubiquitinates PRKAR2A, targeting it for degradation" pmid=12345678 context="cAMP/PKA module"
+/is-extract-from-text "PJA1 ubiquitinates PRKAR2A, targeting it for degradation" pmid=12345678 context="cAMP/PKA module"
 ```
 
 The two-step `extract_from_text` → `persist_extracted` design is intentional:
@@ -1190,7 +1382,7 @@ Used when a computational pipeline produces a new list of candidate genes
 (e.g. a new IBDmix run, GWAS, eQTL analysis):
 
 ```bash
-/project:new-gene-list GENE1 GENE2 GENE3 ...
+/is-new-gene-list GENE1 GENE2 GENE3 ...
 ```
 
 The command will ask for provenance details then register all genes with
@@ -1203,15 +1395,15 @@ When all major interactions within a module are encoded, run enrichment
 to check for known interactions not yet captured:
 
 ```bash
-/project:enrich-gene SORCS3
-/project:enrich-gene DYNLT3
-/project:enrich-gene BEX2
+/is-enrich-gene SORCS3
+/is-enrich-gene DYNLT3
+/is-enrich-gene BEX2
 ```
 
 Then render the network to verify the module is connected:
 
 ```bash
-/project:render-network SORCS3
+/is-render-network SORCS3
 ```
 
 ---
