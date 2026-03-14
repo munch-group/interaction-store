@@ -383,10 +383,10 @@ def enrich_from_indra_db(
 
     Returns a summary — does NOT auto-persist to the statement store.
     """
-    from indra_cache import cached_get_statements_batch, cache_summary
+    from indra_cache import get_statements_batch, cache_summary
 
     try:
-        stmts = cached_get_statements_batch(
+        stmts = get_statements_batch(
             genes, ev_limit=5, max_age_days=max_age_days,
             sleep_between=1.0, verbose=False,
         )
@@ -799,11 +799,14 @@ def _build_gt_graph(stmts, reg):
 def render_network(
     highlight_gene: Optional[str] = None,
     output_path: Optional[str] = None,
+    genes: Optional[list[str]] = None,
 ) -> str:
     """
     Rebuild the interaction network graph from the current store,
     optionally highlighting a specific gene and its neighbours.
     Saves PNG to output_path (default: interaction_network.png).
+
+    If genes is provided, only statements involving those genes are included.
     """
     from graph_tool import Graph as GTGraph
     from graph_tool.draw import graph_draw, sfdp_layout
@@ -811,6 +814,12 @@ def render_network(
     stmts = _load_store()
     reg   = _load_registry()
     out   = str(pathlib.Path(output_path or (BASE / 'interaction_network.png')))
+
+    if genes:
+        gene_set = set(genes)
+        stmts = [s for s in stmts
+                 if any(a is not None and a.name in gene_set
+                        for a in s.agent_list())]
 
     G, name_prop, stmt_type_prop = _build_gt_graph(stmts, reg)
     chrom_prop = G.vp['chromosome']

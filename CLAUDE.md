@@ -461,7 +461,7 @@ so repeated queries are instant instead of taking minutes per gene.
 ```python
 from indra_cache import (
     cached_get_statements,        # single gene
-    cached_get_statements_batch,  # multiple genes with progress
+    get_statements_batch,  # multiple genes with progress
     cache_summary,                # show cached genes and ages
     invalidate_cache,             # clear specific genes or all
 )
@@ -470,7 +470,7 @@ from indra_cache import (
 stmts = cached_get_statements('ADRA2C', ev_limit=5)
 
 # Batch — prints (cached) or (fetched) per gene
-all_stmts = cached_get_statements_batch(
+all_stmts = get_statements_batch(
     ['ADRA2C', 'IRS2', 'MAPT'],
     ev_limit=5,
     max_age_days=30,   # re-fetch entries older than 30 days (None = never expire)

@@ -99,6 +99,26 @@ EDGE_ARROW_SHAPES = {
 
 # ── private helpers ──────────────────────────────────────────────────────────
 
+def _filter_stmts(stmts, genes=None):
+    """Filter statements to those involving any gene in *genes*.
+
+    Parameters
+    ----------
+    stmts : list[Statement]
+        INDRA statement objects.
+    genes : list[str] | set[str] | None
+        Gene names to keep. If None, return all statements unchanged.
+
+    Returns filtered list of statements.
+    """
+    if genes is None:
+        return stmts
+    gene_set = set(genes)
+    return [s for s in stmts
+            if any(a is not None and a.name in gene_set
+                   for a in s.agent_list())]
+
+
 def _hex_to_rgba(hex_color, alpha=1.0):
     """Convert '#RRGGBB' to [r, g, b, a] in 0-1 range."""
     h = hex_color.lstrip('#')
@@ -408,7 +428,7 @@ def _make_click_handlers(info_box, legend_html):
 
 # ── public API ───────────────────────────────────────────────────────────────
 
-def interactive_network(stmts, reg, G=None, highlight=None, **kwargs):
+def interactive_network(stmts, reg, G=None, highlight=None, genes=None, **kwargs):
     """
     Build an interactive ipycytoscape widget with click-to-inspect info box.
 
@@ -422,6 +442,8 @@ def interactive_network(stmts, reg, G=None, highlight=None, **kwargs):
         Pre-built graph. If None, built from stmts + reg.
     highlight : str, optional
         Gene name to highlight (not yet implemented in interactive view).
+    genes : list[str], optional
+        Restrict graph to statements involving these genes.
 
     Style kwargs (all optional)
     ---------------------------
@@ -448,7 +470,8 @@ def interactive_network(stmts, reg, G=None, highlight=None, **kwargs):
     import ipywidgets as widgets
     from IPython.display import display, HTML as DisplayHTML
 
-    if G is None:
+    stmts = _filter_stmts(stmts, genes)
+    if G is None or genes is not None:
         G = _build_graph(stmts, reg)
 
     # Resolve style kwargs with defaults
@@ -519,7 +542,7 @@ def interactive_network(stmts, reg, G=None, highlight=None, **kwargs):
 
 
 def save_static_png(stmts, reg, G=None, output='interaction_network.png',
-                    size=(1800, 1300), **kwargs):
+                    size=(1800, 1300), genes=None, **kwargs):
     """
     Render a static PNG of the interaction network via graph-tool.
 
@@ -535,6 +558,8 @@ def save_static_png(stmts, reg, G=None, output='interaction_network.png',
         Output file path.
     size : tuple[int, int]
         Image dimensions in pixels.
+    genes : list[str], optional
+        Restrict graph to statements involving these genes.
 
     Style kwargs (all optional)
     ---------------------------
@@ -552,7 +577,8 @@ def save_static_png(stmts, reg, G=None, output='interaction_network.png',
     """
     import graph_tool.all as gt
 
-    if G is None:
+    stmts = _filter_stmts(stmts, genes)
+    if G is None or genes is not None:
         G = _build_graph(stmts, reg)
 
     # Resolve style kwargs

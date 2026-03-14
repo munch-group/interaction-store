@@ -23,7 +23,7 @@ Usage:
     stmts = cached_get_statements('ADRA2C', ev_limit=5)
 
     # Batch
-    all_stmts = cached_get_statements_batch(['ADRA2C', 'IRS2', 'MAPT'])
+    all_stmts = get_statements_batch(['ADRA2C', 'IRS2', 'MAPT'])
 """
 
 import json
@@ -119,7 +119,7 @@ def cached_get_statements(
     return stmts
 
 
-def cached_get_statements_batch(
+def get_statements_batch(
     genes: list[str],
     ev_limit: int = 5,
     max_age_days: Optional[int] = None,
