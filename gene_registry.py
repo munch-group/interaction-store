@@ -13,7 +13,7 @@ import json
 import pathlib
 from typing import Any
 
-REGISTRY_PATH = pathlib.Path('gene_registry.json')
+REGISTRY_PATH = pathlib.Path('genes.json')
 
 
 # ── I/O ───────────────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ def add_reference(name: str, pmid: str = None, doi: str = None,
 
 # ── Query helpers ─────────────────────────────────────────────────────────────
 
-def get_group(group_name: str, path=REGISTRY_PATH) -> list[str]:
+def group_members(group_name: str, path=REGISTRY_PATH) -> list[str]:
     """Return all gene names belonging to a group."""
     reg = load_registry(path)
     return [
@@ -93,7 +93,7 @@ def get_by_chromosome(chrom: str, path=REGISTRY_PATH) -> list[str]:
     ]
 
 
-def get_rescue_candidates(path=REGISTRY_PATH) -> list[str]:
+def rescue_candidates(path=REGISTRY_PATH) -> list[str]:
     """Return genes flagged as rescue candidates."""
     reg = load_registry(path)
     return [
@@ -137,13 +137,13 @@ def enrich_graph(G, name_prop, path=REGISTRY_PATH):
     return G
 
 
-def get_gene_info(name: str, path=REGISTRY_PATH) -> dict | None:
+def gene_info(name: str, path=REGISTRY_PATH) -> dict | None:
     """Return full registry entry for a gene, or None if not found."""
     reg = load_registry(path)
     return reg.get(name)
 
 
-def get_all_groups(path=REGISTRY_PATH) -> dict[str, list[str]]:
+def all_groups(path=REGISTRY_PATH) -> dict[str, list[str]]:
     """Return {group_name: [gene, ...]} for every group in the registry."""
     reg = load_registry(path)
     groups: dict[str, list[str]] = {}
@@ -153,7 +153,7 @@ def get_all_groups(path=REGISTRY_PATH) -> dict[str, list[str]]:
     return {k: sorted(v) for k, v in sorted(groups.items())}
 
 
-def get_all_contexts(store_path='statements.json') -> dict[str, int]:
+def all_contexts(store_path='statements.json') -> dict[str, int]:
     """Return {context_tag: count} from the statement store."""
     import pathlib as _pl
     p = _pl.Path(store_path)
@@ -194,10 +194,10 @@ def genes_by_context(context: str, store_path='statements.json'):
 def genes_by_group(group_name: str, path=REGISTRY_PATH):
     """Return all genes belonging to a group as a GeneList."""
     from geneinfo.genelist import GeneList
-    return GeneList(get_group(group_name, path))
+    return GeneList(group_members(group_name, path))
 
 
-def get_interactors(gene: str, store_path='statements.json') -> list[dict]:
+def interactors(gene: str, store_path='statements.json') -> list[dict]:
     """
     Return all genes that interact with *gene* in the statement store.
 
@@ -293,6 +293,21 @@ def _split_candidates(name: str) -> list[list[str]]:
     return results
 
 
+def _validate_path(kwarg_name: str, sample_objects: list[dict]):
+    """Check that at least one split of kwarg_name resolves to data in
+    at least one sample object. Raises KeyError if no split works."""
+    candidates = _split_candidates(kwarg_name)
+    for obj in sample_objects:
+        for keys in candidates:
+            if _resolve_path(obj, keys):
+                return  # valid
+    valid_splits = [' → '.join(c) for c in candidates]
+    raise KeyError(
+        f"'{kwarg_name}' does not match any field. "
+        f"Tried paths: {', '.join(valid_splits)}"
+    )
+
+
 def _make_path_filter(kwarg_name: str, pattern: str):
     """Build a filter function from an underscore-separated path and regex.
 
@@ -347,8 +362,14 @@ def query_statements(intersection: bool = True,
     with open(p) as f:
         raw = json.load(f)
 
-    filters = [_make_path_filter(k, v) for k, v in kwargs.items()
-               if isinstance(v, str)]
+    str_kwargs = {k: v for k, v in kwargs.items() if isinstance(v, str)}
+    # Validate paths against a sample of entries
+    if raw and str_kwargs:
+        sample = raw[:min(5, len(raw))]
+        for kwarg_name in str_kwargs:
+            _validate_path(kwarg_name, sample)
+
+    filters = [_make_path_filter(k, v) for k, v in str_kwargs.items()]
     # Boolean flags
     if kwargs.get('hypothesis_only'):
         filters.append(_make_path_filter(
@@ -395,10 +416,16 @@ def query_genes(intersection: bool = True,
     reg = load_registry(path)
     items = list(reg.items())
 
+    str_kwargs = {k: v for k, v in kwargs.items() if isinstance(v, str)}
+    # Validate paths against a sample of entries (skip 'gene' — it matches keys)
+    if items and str_kwargs:
+        sample = [a for _, a in items[:min(5, len(items))]]
+        for kwarg_name in str_kwargs:
+            if kwarg_name != 'gene':
+                _validate_path(kwarg_name, sample)
+
     filters = []
-    for kwarg_name, pattern in kwargs.items():
-        if not isinstance(pattern, str):
-            continue
+    for kwarg_name, pattern in str_kwargs.items():
         if kwarg_name == 'gene':
             pat = re.compile(pattern, re.IGNORECASE)
             filters.append(lambda n, a, _p=pat: bool(_p.search(n)))

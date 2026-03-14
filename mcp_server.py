@@ -39,7 +39,7 @@ from fastmcp import FastMCP
 # ── paths ─────────────────────────────────────────────────────────────────────
 BASE          = pathlib.Path(__file__).parent
 STORE_PATH    = BASE / 'statements.json'
-REGISTRY_PATH = BASE / 'gene_registry.json'
+REGISTRY_PATH = BASE / 'genes.json'
 
 # ── lazy INDRA imports (only needed at call time) ─────────────────────────────
 def _indra():
@@ -626,8 +626,8 @@ def list_contexts() -> str:
     """
     List all context tags used in the statement store with counts.
     """
-    from gene_registry import get_all_contexts
-    contexts = get_all_contexts(str(STORE_PATH))
+    from gene_registry import all_contexts
+    contexts = all_contexts(str(STORE_PATH))
     if not contexts:
         return 'No context tags found.'
     lines = [f'{len(contexts)} context tags:\n']
@@ -658,8 +658,8 @@ def gene_interactions(gene: str) -> str:
     List all genes that interact with a specific gene in the store,
     with statement type, context, and references.
     """
-    from gene_registry import get_interactors
-    hits = get_interactors(gene, str(STORE_PATH))
+    from gene_registry import interactors
+    hits = interactors(gene, str(STORE_PATH))
     if not hits:
         return f'No interactions found for {gene}.'
     lines = [f'{gene} — {len(hits)} interaction(s):\n']
@@ -679,8 +679,8 @@ def gene_info(gene: str) -> str:
     Show all recorded information about a gene: registry entry
     plus all statements involving it.
     """
-    from gene_registry import get_gene_info, get_interactors
-    info = get_gene_info(gene)
+    from gene_registry import gene_info, interactors
+    info = gene_info(gene)
     if info is None:
         reg_section = f'{gene} is not in the registry.'
     else:
@@ -710,7 +710,7 @@ def gene_info(gene: str) -> str:
         reg_section = '\n'.join(lines)
 
     # Interactions
-    hits = get_interactors(gene, str(STORE_PATH))
+    hits = interactors(gene, str(STORE_PATH))
     if hits:
         int_lines = [f'\n{len(hits)} interaction(s):']
         for h in hits:
@@ -728,8 +728,8 @@ def gene_info(gene: str) -> str:
 @mcp.tool
 def list_groups() -> str:
     """List all gene groups in the registry with their members."""
-    from gene_registry import get_all_groups
-    groups = get_all_groups()
+    from gene_registry import all_groups
+    groups = all_groups()
     if not groups:
         return 'No groups found.'
     lines = [f'{len(groups)} group(s):\n']

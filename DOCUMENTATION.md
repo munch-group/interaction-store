@@ -621,7 +621,7 @@ independently of the interaction graph.
 from gene_registry import (
     load_registry, save_registry,
     add_gene, update_gene, add_to_group, add_reference,
-    get_group, get_by_chromosome, get_rescue_candidates,
+    group_members, get_by_chromosome, rescue_candidates,
     enrich_graph, summarise,
 )
 
@@ -642,8 +642,8 @@ add_reference('SORCS3', pmid='29656857', note='SORCS3 in ADHD GWAS')
 
 # Query
 x_genes    = get_by_chromosome('X')
-mt_members = get_group('MT lattice/transport')
-candidates = get_rescue_candidates()
+mt_members = group_members('MT lattice/transport')
+candidates = rescue_candidates()
 
 # Print full summary
 summarise()
@@ -1110,43 +1110,43 @@ use, scripting, and programmatic access.
 
 ```python
 from gene_registry import (
-    get_gene_info,        # full registry entry for one gene
-    get_all_groups,       # all groups with their members
-    get_all_contexts,     # context tags with counts
+    gene_info,        # full registry entry for one gene
+    all_groups,       # all groups with their members
+    all_contexts,     # context tags with counts
     genes_by_context, # genes in statements with a context tag → GeneList
     genes_by_group,   # genes belonging to a named group → GeneList
-    get_interactors,      # interaction partners for a gene
+    interactors,      # interaction partners for a gene
     query_statements,     # filter statements by gene/type/context → list[dict]
     query_genes,       # filter registry by gene/group/chrom → dict[str, dict]
 )
 ```
 
-**`get_gene_info(gene) → dict | None`**
+**`gene_info(gene) → dict | None`**
 
 Returns the full registry entry for a gene, or `None` if not registered.
 
 ```python
->>> get_gene_info('MAPT')
+>>> gene_info('MAPT')
 {'chromosome': 'auto', 'groups': ['MT lattice/transport'],
  'notes': 'Microtubule-associated protein tau. ...'}
 ```
 
-**`get_all_groups() → dict[str, list[str]]`**
+**`all_groups() → dict[str, list[str]]`**
 
 Returns `{group_name: [gene, ...]}` for every group in the registry.
 
 ```python
->>> get_all_groups()
+>>> all_groups()
 {'cAMP/PKA module': ['ADRA2C', 'AKAP4', 'PJA1', 'PRKX', 'PRKY'],
  'gametologs': ['PRKX', 'PRKY'], ...}
 ```
 
-**`get_all_contexts(store_path='statements.json') → dict[str, int]`**
+**`all_contexts(store_path='statements.json') → dict[str, int]`**
 
 Returns `{context_tag: count}` from the statement store.
 
 ```python
->>> get_all_contexts()
+>>> all_contexts()
 {'cAMP/PKA module': 3, 'exploratory': 21, ...}
 ```
 
@@ -1169,13 +1169,13 @@ Returns all genes belonging to a named group as a `geneinfo.genelist.GeneList`.
 GeneList(['DYNLT3', 'HDAC6', 'MAP7D3', 'MAPT'])
 ```
 
-**`get_interactors(gene, store_path='statements.json') → list[dict]`**
+**`interactors(gene, store_path='statements.json') → list[dict]`**
 
 Returns all genes that interact with the given gene, with statement type,
 context, and references.
 
 ```python
->>> get_interactors('PKA')
+>>> interactors('PKA')
 [{'gene': 'cAMP', 'type': 'Activation', 'context': 'cAMP/PKA module', 'refs': ['PMID:7803765']},
  {'gene': 'MAPT', 'type': 'Phosphorylation', 'context': 'cAMP/PKA → tau → MT lattice', 'refs': ['PMID:38492709']},
  ...]

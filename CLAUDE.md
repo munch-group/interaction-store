@@ -369,7 +369,7 @@ belong in INDRA statements. The schema is:
 ## 5. Registry helpers (gene_registry.py)
 
 ```python
-from gene_registry import load_registry, save_registry, add_gene, get_group
+from gene_registry import load_registry, save_registry, add_gene, group_members
 
 # Load
 reg = load_registry()           # dict: gene_name → attributes
@@ -387,7 +387,7 @@ add_gene('PRKY', {
 })
 
 # Query by group
-mt_genes = get_group('MT lattice/transport')
+mt_genes = group_members('MT lattice/transport')
 
 # Enrich NetworkX graph with registry attributes
 for node in G.nodes():
@@ -402,24 +402,24 @@ for node in G.nodes():
 
 ```python
 from gene_registry import (
-    get_gene_info,        # full registry entry for one gene → dict | None
-    get_all_groups,       # {group_name: [gene, ...]} → dict
-    get_all_contexts,     # {context_tag: count} from statement store → dict
+    gene_info,        # full registry entry for one gene → dict | None
+    all_groups,       # {group_name: [gene, ...]} → dict
+    all_contexts,     # {context_tag: count} from statement store → dict
     genes_by_context, # genes in statements with a context tag → GeneList
     genes_by_group,   # genes belonging to a named group → GeneList
-    get_interactors,      # genes interacting with a gene → list[dict]
+    interactors,      # genes interacting with a gene → list[dict]
     query_statements,     # filter statements by nested path kwargs → list[dict]
     query_genes,       # filter registry by nested path kwargs → dict[str, dict]
 )
 
 # Full gene info
-info = get_gene_info('MAPT')
+info = gene_info('MAPT')
 
 # All groups and members
-groups = get_all_groups()
+groups = all_groups()
 
 # Context tags with counts
-contexts = get_all_contexts()
+contexts = all_contexts()
 
 # Genes in a context (returns GeneList)
 genes = genes_by_context('cAMP/PKA')
@@ -428,7 +428,7 @@ genes = genes_by_context('cAMP/PKA')
 genes = genes_by_group('MT lattice/transport')
 
 # Interaction partners
-partners = get_interactors('PKA')
+partners = interactors('PKA')
 # → [{'gene': 'MAPT', 'type': 'Phosphorylation', 'context': '...', 'refs': [...]}, ...]
 
 # Query statements — kwargs are underscore-separated paths, values are regexes
