@@ -681,13 +681,16 @@ def render_network(
     highlight_gene: Optional[str] = None,
     output_path: Optional[str] = None,
     genes: Optional[list[str]] = None,
+    singletons: bool = False,
 ) -> str:
     """
     Rebuild the interaction network graph from the current store,
     optionally highlighting a specific gene and its neighbours.
     Saves PNG to output_path (default: interaction_network.png).
 
-    If genes is provided, only statements involving those genes are included.
+    If genes is provided, only edges between those genes are included.
+    If singletons is True, genes with no within-group interactions are
+    shown as isolated nodes.
     """
     from visualization import save_static_png
 
@@ -695,7 +698,8 @@ def render_network(
     reg   = _load_registry()
     out   = output_path or str(BASE / 'interaction_network.png')
 
-    result = save_static_png(stmts, reg, output=out, genes=genes)
+    result = save_static_png(stmts, reg, output=out, genes=genes,
+                             singletons=singletons)
 
     n_stmts = len(stmts)
     if genes:

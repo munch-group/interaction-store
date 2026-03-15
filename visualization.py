@@ -293,8 +293,8 @@ def _builtin_for_field(field, chromosome_colors=None, group_colors=None,
 
 # ── private helpers ──────────────────────────────────────────────────────────
 
-def _filter_stmts(stmts, genes=None):
-    """Filter statements to those involving any gene in *genes*.
+def _filter_stmts(stmts, genes=None, mode='all'):
+    """Filter statements to those involving genes in *genes*.
 
     Parameters
     ----------
@@ -302,15 +302,23 @@ def _filter_stmts(stmts, genes=None):
         INDRA statement objects.
     genes : list[str] | set[str] | None
         Gene names to keep. If None, return all statements unchanged.
+    mode : {'all', 'any'}
+        'all' — keep only if **every** agent is in *genes* (within-group).
+        'any' — keep if **at least one** agent is in *genes* (includes
+        interactors outside the gene set).
 
     Returns filtered list of statements.
     """
     if genes is None:
         return stmts
     gene_set = set(genes)
+    if mode == 'any':
+        return [s for s in stmts
+                if any(a is not None and a.name in gene_set
+                       for a in s.agent_list())]
     return [s for s in stmts
-            if any(a is not None and a.name in gene_set
-                   for a in s.agent_list())]
+            if all(a.name in gene_set
+                   for a in s.agent_list() if a is not None)]
 
 
 def _hex_to_rgba(hex_color, alpha=1.0):
@@ -349,8 +357,34 @@ def _build_edge_evidence(stmts):
     return edge_evidence
 
 
-def _build_graph(stmts, reg):
-    """Build a graph-tool directed Graph from INDRA statements + registry."""
+def build_graph(stmts, genes=None, *, reg=None, mode='all', singletons=False):
+    """Build a graph-tool directed Graph from INDRA statements + registry.
+
+    Parameters
+    ----------
+    stmts : list[Statement]
+        INDRA statement objects.
+    genes : list[str] | set[str] | dict | None
+        Gene set to filter to. Accepts a list/set of names or a dict
+        from ``query_genes`` (keys are used). If None, all statements
+        are included.
+    reg : dict | None
+        Gene registry dict (gene → attributes). Loaded from disk if None.
+    mode : {'all', 'any'}
+        'all' keeps only edges where **every** agent is in *genes*.
+        'any' keeps edges where **at least one** agent is in *genes*.
+    singletons : bool
+        If True and *genes* is given, add genes that have no within-group
+        interactions as isolated nodes.
+    """
+    if reg is None:
+        from gene_registry import load_registry
+        reg = load_registry()
+    # Accept query_genes dict as gene filter
+    if isinstance(genes, dict):
+        genes = list(genes)
+
+    stmts = _filter_stmts(stmts, genes, mode=mode)
     import graph_tool.all as gt
 
     G = gt.Graph(directed=True)
@@ -375,14 +409,22 @@ def _build_graph(stmts, reg):
         if stype == 'Complex':
             for i, a in enumerate(agents):
                 for b in agents[i + 1:]:
+                    if a.name == b.name:
+                        continue
                     va, vb = _get_or_add(a.name), _get_or_add(b.name)
                     e = G.add_edge(va, vb)
                     G.ep['stmt_type'][e] = 'Complex'
         elif len(agents) >= 2:
+            if agents[0].name == agents[-1].name:
+                continue
             va = _get_or_add(agents[0].name)
             vb = _get_or_add(agents[-1].name)
             e = G.add_edge(va, vb)
             G.ep['stmt_type'][e] = stype
+
+    if singletons and genes is not None:
+        for name in genes:
+            _get_or_add(name)
 
     return G
 
@@ -648,7 +690,8 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
                         fill_by='chromosome', border_by='groups',
                         fill_colors=None, border_colors=None,
                         chromosome_colors=None, group_colors=None,
-                        context_colors=None, **kwargs):
+                        context_colors=None, singletons=False,
+                        layout=None, **kwargs):
     """
     Build an interactive ipycytoscape widget with click-to-inspect info box.
 
@@ -683,6 +726,14 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
     context_colors : dict, optional
         {context_tag: hex_color} for context tags.
         Applied whenever fill_by or border_by is 'contexts'.
+    singletons : bool
+        If True and *genes* is given, include genes with no within-group
+        interactions as isolated nodes (default False).
+    layout : graph_tool.VertexPropertyMap or str, optional
+        Node positions. Pass a graph-tool layout result
+        (e.g. ``gt.arf_layout(G)``) to use those positions instead of
+        cytoscape's built-in cose layout. Also accepts a cytoscape.js
+        layout name as a string (e.g. ``'circle'``, ``'grid'``).
 
     Style kwargs (all optional)
     ---------------------------
@@ -718,9 +769,8 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
 
     fill_multi = _is_multi_valued(reg, fill_by)
 
-    stmts = _filter_stmts(stmts, genes)
     if G is None or genes is not None:
-        G = _build_graph(stmts, reg)
+        G = build_graph(stmts, genes=genes, reg=reg, singletons=singletons)
 
     # Backward compat: chrom_colors → chromosome_colors, module_colors → group_colors
     if kwargs.get('chrom_colors') and chromosome_colors is None:
@@ -748,6 +798,11 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
     text_outline = kwargs.get('text_outline', True)
 
     edge_evidence = _build_edge_evidence(stmts)
+
+    # Resolve layout: graph-tool VertexPropertyMap → positions for preset layout
+    _gt_pos = None
+    if layout is not None and not isinstance(layout, str):
+        _gt_pos = layout  # assume graph-tool VertexPropertyMap
     cyto_json = _cytoscape_json(G, reg, edge_evidence,
                                 fill_by, border_by,
                                 resolved_fill, resolved_border,
@@ -772,13 +827,36 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
         node_size, node_shape, font_size, border_width, edge_width,
         text_color, font_weight, text_outline, fill_multi,
     ))
-    cyto.set_layout(
-        name='cose', nodeOverlap=20, idealEdgeLength=80,
-        edgeElasticity=100, nestingFactor=1.2,
-        gravity=0.5, numIter=1000,
-        initialTemp=200, coolingFactor=0.95,
-        minTemp=1.0, animate=False,
-    )
+    if _gt_pos is not None:
+        # Scale graph-tool positions to pixel-space and apply to nodes
+        import numpy as np
+        coords = np.array([_gt_pos[v] for v in G.vertices()])
+        if len(coords) > 0:
+            mins = coords.min(axis=0)
+            maxs = coords.max(axis=0)
+            span = maxs - mins
+            span[span == 0] = 1
+            # Scale to 800x600 canvas with 50px margin
+            scaled = 50 + (coords - mins) / span * np.array([700, 500])
+        name_to_pos = {}
+        for v in G.vertices():
+            idx = int(v)
+            name_to_pos[G.vp['name'][v]] = (float(scaled[idx][0]), float(scaled[idx][1]))
+        for node in cyto.graph.nodes:
+            p = name_to_pos.get(node.data['id'])
+            if p:
+                node.position = {'x': p[0], 'y': p[1]}
+        cyto.set_layout(name='preset', animate=False)
+    elif isinstance(layout, str):
+        cyto.set_layout(name=layout, animate=False)
+    else:
+        cyto.set_layout(
+            name='cose', nodeOverlap=20, idealEdgeLength=80,
+            edgeElasticity=100, nestingFactor=1.2,
+            gravity=0.5, numIter=1000,
+            initialTemp=200, coolingFactor=0.95,
+            minTemp=1.0, animate=False,
+        )
     cyto.layout.height = '600px'
 
     # Override ipycytoscape's .custom-widget background via IPython.display.
@@ -809,7 +887,7 @@ def save_static_png(stmts, reg, G=None, output='interaction_network.png',
                     fill_by='chromosome', border_by='groups',
                     fill_colors=None, border_colors=None,
                     chromosome_colors=None, group_colors=None,
-                    context_colors=None, **kwargs):
+                    context_colors=None, singletons=False, **kwargs):
     """
     Render a static PNG of the interaction network via graph-tool.
 
@@ -846,6 +924,9 @@ def save_static_png(stmts, reg, G=None, output='interaction_network.png',
     context_colors : dict, optional
         {context_tag: hex_color} for context tags. Applied when fill_by or
         border_by is 'contexts'.
+    singletons : bool
+        If True and *genes* is given, include genes with no within-group
+        interactions as isolated nodes (default False).
 
     Style kwargs (all optional)
     ---------------------------
@@ -879,9 +960,8 @@ def save_static_png(stmts, reg, G=None, output='interaction_network.png',
             stacklevel=2,
         )
 
-    stmts = _filter_stmts(stmts, genes)
     if G is None or genes is not None:
-        G = _build_graph(stmts, reg)
+        G = build_graph(stmts, genes=genes, reg=reg, singletons=singletons)
 
     # Backward compat: chrom_colors → chromosome_colors, module_colors → group_colors
     if kwargs.get('chrom_colors') and chromosome_colors is None:
@@ -953,3 +1033,100 @@ def save_static_png(stmts, reg, G=None, output='interaction_network.png',
     )
     print(f'Static PNG \u2192 {output}')
     return output
+
+
+
+
+from pycirclize import Circos
+from pycirclize.utils import ColorCycler, load_eukaryote_example_dataset
+from collections import defaultdict
+import matplotlib
+import numpy as np
+from matplotlib.colors import LinearSegmentedColormap
+
+chrom_lengths = {'hg19': {'chr1': 249250621, 'chr2': 243199373, 'chr3': 198022430, 'chr4': 191154276,
+                            'chr5': 180915260, 'chr6': 171115067, 'chr7': 159138663, 'chr8': 146364022,
+                            'chr9': 141213431, 'chr10': 135534747, 'chr11': 135006516, 'chr12': 133851895,
+                            'chr13': 115169878, 'chr14': 107349540, 'chr15': 102531392, 'chr16': 90354753,
+                            'chr17': 81195210, 'chr18': 78077248, 'chr19': 59128983, 'chr20': 63025520,
+                            'chr21': 48129895, 'chr22': 51304566, 'chrX': 155270560, 'chrY': 59373566},
+                    'hg38': {'chr1': 248956422, 'chr2': 242193529, 'chr3': 198295559, 'chr4': 190214555,
+                            'chr5': 181538259, 'chr6': 170805979, 'chr7': 159345973, 'chr8': 145138636,
+                            'chr9': 138394717, 'chr10': 133797422, 'chr11': 135086622, 'chr12': 133275309,
+                            'chr13': 114364328, 'chr14': 107043718, 'chr15': 101991189, 'chr16': 90338345,
+                            'chr17': 83257441, 'chr18': 80373285, 'chr19': 58617616, 'chr20': 64444167,
+                            'chr21': 46709983, 'chr22': 50818468, 'chrX': 156040895, 'chrY': 57227415}}
+
+
+def register_shifted_cmap(cmap_name, n_lines=24):
+    name_shifted = f'shifted_{cmap_name}'
+    n = n_lines // 2
+    cmap = matplotlib.colormaps[cmap_name]
+    colors = cmap(np.linspace(0, 1, n))
+    l = list(range(n))
+    i = n//2
+    colors = [colors[x] for y in zip(l, l[i:] + l[:i]) for x in y][:n_lines]
+    _cmap = LinearSegmentedColormap.from_list(f'shifted_{cmap_name}', colors)
+    try:
+        matplotlib.colormaps.register(cmap=_cmap)
+    except ValueError:
+        # already registered, ignore
+        pass
+    return name_shifted
+
+def circos_plot(stmts, reg, cmap=None, scalings={}, assembly='hg38',
+        ideogram_base = 97, ideogram_height = 3, figsize = (8, 8)):
+
+    ColorCycler.set_cmap(cmap)
+    sector_lengths = chrom_lengths[assembly].copy()
+    sector_lengths['chrX'] *= 10
+    circos = Circos(sectors=sector_lengths, space=3)
+    chr_names = [s.name for s in circos.sectors]
+    colors = ColorCycler.get_color_list(len(chr_names))
+    chr_name2color = {name: color for name, color in zip(chr_names, colors)}
+
+    label_genes = set([a.name for st in stmts for a in st.agent_list() if a])
+    gene_coordinates = {}
+    for name, data in reg.items():
+        if name in label_genes and 'coordinates' in data:
+            gene_coordinates[name] = [
+                data['coordinates'][assembly]['chrom'],
+                data['coordinates'][assembly]['start'],
+                data['coordinates'][assembly]['end']
+            ]
+    gene_labels = defaultdict(list)
+    for name, (chrom, start, end) in gene_coordinates.items():
+        gene_labels[chrom].append([(start+end)/2 * scalings.get(chrom, 1), name])
+
+    for sector in circos.sectors:
+        sector.text(sector.name, r=105, size=8, color=chr_name2color[sector.name])
+        outer_track = sector.add_track((ideogram_base, ideogram_base+ideogram_height))
+        outer_track.axis(fc="#eeeeee")
+
+        for pos, label in gene_labels.get(sector.name, []):
+            outer_track.annotate(pos, label, label_size=7,
+                                min_r=ideogram_base,
+                                max_r=ideogram_base+5*ideogram_height,
+                                )
+    for st in stmts:
+        agent_list = st.agent_list()
+        if len(agent_list) < 2:
+            continue
+        if len(agent_list) > 2:
+            print(f'More than than 2 agents in statement, skipping: {" ".join(a.name for a in agent_list if a)}')
+            continue        
+        a, b = agent_list
+        if a and b and a.name in gene_coordinates and b.name in gene_coordinates:
+            _from, _to = gene_coordinates[a.name], gene_coordinates[b.name]
+            _from[1] *= scalings.get(_from[0], 1)
+            _from[2] *= scalings.get(_from[0], 1)
+            _to[1] *= scalings.get(_to[0], 1)
+            _to[2] *= scalings.get(_to[0], 1)
+            color = chr_name2color[_from[0]]
+            circos.link(_from, _to,
+                        color=color,
+                        lw=0.5,
+                        alpha=1,
+                        zorder=0)
+
+    fig = circos.plotfig(figsize=figsize)

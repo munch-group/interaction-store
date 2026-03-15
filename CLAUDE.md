@@ -471,8 +471,10 @@ query_statements(hypothesis_only=True)  # speculative, not yet peer-reviewed
 ### 6.1 Cache layer (`indra_cache.py`)
 
 All INDRA DB REST queries should go through the persistent cache in
-`indra_cache.py`. Results are stored per-gene in `indra_db_cache.json`
-so repeated queries are instant instead of taking minutes per gene.
+`indra_cache.py`. Results are stored per-gene in a SQLite database
+(`indra_db_cache.db`) so repeated queries are instant instead of
+taking minutes per gene. Each gene is accessed individually (O(1))
+rather than loading the entire cache into memory.
 
 ```python
 from indra_cache import (
@@ -658,7 +660,7 @@ project/
 ├── utils.py                    ← notebook-specific: graph-tool traversal, circos plot
 ├── statements.json             ← INDRA statement store (auto-managed)
 ├── genes.json                  ← gene attribute registry (auto-managed)
-├── indra_db_cache.json         ← per-gene INDRA DB query cache (auto-managed)
+├── indra_db_cache.db           ← per-gene INDRA DB query cache, SQLite (auto-managed)
 ├── interaction_store.ipynb     ← exploratory analysis notebook
 ├── interaction_network.png     ← rendered graph (regenerated on demand)
 └── .claude/

@@ -3,18 +3,17 @@ indra_cache.py
 --------------
 Persistent cache for INDRA DB REST API queries.
 
-Stores results per-gene in indra_db_cache.json so repeated queries
-are instant. Both the notebook and MCP server import from here.
+Stores results per-gene in a SQLite database (indra_db_cache.db) so
+repeated queries are instant. Both the notebook and MCP server import
+from here.
 
-Cache structure:
-{
-  "GENE_NAME": {
-    "fetched": "2026-03-12",
-    "ev_limit": 5,
-    "statements": [ ... INDRA JSON ... ]
-  },
-  ...
-}
+Schema:
+    CREATE TABLE cache (
+        gene       TEXT PRIMARY KEY,
+        fetched    TEXT NOT NULL,        -- ISO date YYYY-MM-DD
+        ev_limit   INTEGER NOT NULL,
+        statements TEXT NOT NULL         -- JSON array (INDRA statement list)
+    );
 
 Usage:
     from indra_cache import cached_get_statements
@@ -28,62 +27,112 @@ Usage:
 
 import json
 import pathlib
+import sqlite3
 import time
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
-from tqdm.auto import tqdm, trange
+from tqdm.auto import tqdm
 
-CACHE_PATH = pathlib.Path(__file__).parent / 'indra_db_cache.json'
+CACHE_JSON_PATH = pathlib.Path(__file__).parent / 'indra_db_cache.json'
+CACHE_DB = pathlib.Path(__file__).parent / 'indra_db_cache.db'
+
+# Keep old path reference for backward compat
+CACHE_PATH = CACHE_JSON_PATH
 
 
-def _atomic_json_write(path: pathlib.Path, data, **kwargs):
-    """Write JSON atomically: temp file + rename to avoid corruption."""
-    import tempfile
-    kwargs.setdefault('indent', 2)
-    tmp_fd, tmp_path = tempfile.mkstemp(
-        dir=path.parent, suffix='.tmp', prefix=f'.{path.stem}_')
+# ---------------------------------------------------------------------------
+# SQLite helpers
+# ---------------------------------------------------------------------------
+
+def _get_db() -> sqlite3.Connection:
+    """Return a sqlite3 connection, creating table if needed."""
+    conn = sqlite3.connect(CACHE_DB)
+    conn.execute('''CREATE TABLE IF NOT EXISTS cache (
+        gene       TEXT PRIMARY KEY,
+        fetched    TEXT NOT NULL,
+        ev_limit   INTEGER NOT NULL,
+        statements TEXT NOT NULL
+    )''')
+    return conn
+
+
+def _get_entry(gene: str) -> dict | None:
+    """Fetch a single gene's cache entry."""
+    conn = _get_db()
+    row = conn.execute(
+        'SELECT fetched, ev_limit, statements FROM cache WHERE gene = ?',
+        (gene,)
+    ).fetchone()
+    conn.close()
+    if row is None:
+        return None
+    return {'fetched': row[0], 'ev_limit': row[1], 'statements': json.loads(row[2])}
+
+
+def _put_entry(gene: str, fetched: str, ev_limit: int, statements_json: list):
+    """Upsert a single gene's cache entry."""
+    conn = _get_db()
+    conn.execute(
+        'INSERT OR REPLACE INTO cache (gene, fetched, ev_limit, statements) VALUES (?, ?, ?, ?)',
+        (gene, fetched, ev_limit, json.dumps(statements_json))
+    )
+    conn.commit()
+    conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Migration: JSON → SQLite (one-time, runs at import)
+# ---------------------------------------------------------------------------
+
+def _migrate_json_to_db():
+    """Convert indra_db_cache.json to indra_db_cache.db (one-time)."""
+    if not CACHE_JSON_PATH.exists() or CACHE_DB.exists():
+        return
+    print(f'Migrating {CACHE_JSON_PATH.name} → {CACHE_DB.name} ...')
     try:
-        with open(tmp_fd, 'w') as f:
-            json.dump(data, f, **kwargs)
-        pathlib.Path(tmp_path).replace(path)
-    except BaseException:
-        pathlib.Path(tmp_path).unlink(missing_ok=True)
-        raise
-
-
-def load_cache() -> dict:
-    if not CACHE_PATH.exists():
-        return {}
-    try:
-        with open(CACHE_PATH) as f:
+        with open(CACHE_JSON_PATH) as f:
             data = json.load(f)
     except (json.JSONDecodeError, ValueError) as exc:
-        backup = CACHE_PATH.with_suffix('.json.bak')
-        CACHE_PATH.rename(backup)
-        print(f'WARNING: indra_db_cache.json is corrupt ({exc.__class__.__name__}) — '
-              f'moved to {backup.name} and starting fresh cache.')
-        return {}
+        print(f'WARNING: {CACHE_JSON_PATH.name} is corrupt ({exc.__class__.__name__}) '
+              f'— skipping migration.')
+        return
     if not isinstance(data, dict):
-        backup = CACHE_PATH.with_suffix('.json.bak')
-        CACHE_PATH.rename(backup)
-        print(f'WARNING: indra_db_cache.json was not a dict — '
-              f'moved to {backup.name} and starting fresh cache.')
-        return {}
-    return data
+        print(f'WARNING: {CACHE_JSON_PATH.name} was not a dict — skipping migration.')
+        return
+    conn = _get_db()
+    for gene, entry in data.items():
+        conn.execute(
+            'INSERT OR REPLACE INTO cache (gene, fetched, ev_limit, statements) VALUES (?, ?, ?, ?)',
+            (gene, entry['fetched'], entry['ev_limit'], json.dumps(entry['statements']))
+        )
+    conn.commit()
+    conn.close()
+    print(f'Migrated {len(data)} genes. You can now delete {CACHE_JSON_PATH.name}.')
 
 
-def save_cache(cache: dict):
-    """Write cache atomically: write to temp file, then rename."""
-    _atomic_json_write(CACHE_PATH, cache)
+_migrate_json_to_db()
 
 
-def cache_age_days(gene: str, cache: Optional[dict] = None) -> Optional[int]:
+# ---------------------------------------------------------------------------
+# Public API (signatures unchanged)
+# ---------------------------------------------------------------------------
+
+def load_cache() -> dict:
+    """Load entire cache as dict. Prefer _get_entry() for single-gene access."""
+    conn = _get_db()
+    rows = conn.execute('SELECT gene, fetched, ev_limit, statements FROM cache').fetchall()
+    conn.close()
+    return {
+        row[0]: {'fetched': row[1], 'ev_limit': row[2], 'statements': json.loads(row[3])}
+        for row in rows
+    }
+
+
+def cache_age_days(gene: str) -> Optional[int]:
     """Return age of cached entry in days, or None if not cached."""
-    cache = cache or load_cache()
-    entry = cache.get(gene)
+    entry = _get_entry(gene)
     if not entry:
         return None
-    from datetime import datetime
     fetched = datetime.strptime(entry['fetched'], '%Y-%m-%d').date()
     return (date.today() - fetched).days
 
@@ -119,24 +168,25 @@ def cached_get_statements(
     from indra.statements import stmts_from_json, stmts_to_json
 
     genes = [gene] if isinstance(gene, str) else list(gene)
-    cache = load_cache()
     all_stmts = []
+    n_cached = 0
 
     for g in tqdm(genes):
-        entry = cache.get(g)
+        entry = _get_entry(g)
 
         # Check cache hit
         hit = False
         if entry is not None:
             expired = False
             if max_age_days is not None:
-                age = cache_age_days(g, cache)
+                age = cache_age_days(g)
                 expired = age is not None and age > max_age_days
             if not expired:
                 hit = True
 
         if hit:
             stmts = stmts_from_json(entry['statements'])
+            n_cached += 1
             if verbose:
                 print(f'  {g}: {len(stmts)} statements (cached)')
         else:
@@ -144,12 +194,8 @@ def cached_get_statements(
                 from indra.sources.indra_db_rest import get_statements
                 proc = get_statements(agents=[g], ev_limit=ev_limit)
                 stmts = proc.statements
-                cache[g] = {
-                    'fetched': str(date.today()),
-                    'ev_limit': ev_limit,
-                    'statements': stmts_to_json(stmts),
-                }
-                save_cache(cache)
+                _put_entry(g, str(date.today()), ev_limit, stmts_to_json(stmts))
+                n_cached += 1
                 if verbose:
                     print(f'  {g}: {len(stmts)} statements (fetched)')
                 if len(genes) > 1:
@@ -162,7 +208,6 @@ def cached_get_statements(
         all_stmts.extend(stmts)
 
     if verbose and len(genes) > 1:
-        n_cached = sum(1 for g in genes if g in cache)
         print(f'\nTotal: {len(all_stmts)} statements ({n_cached} cached)')
 
     return all_stmts
@@ -174,17 +219,20 @@ get_statements_batch = cached_get_statements
 
 def cache_summary() -> str:
     """Return a summary of what's in the cache."""
-    cache = load_cache()
-    if not cache:
+    conn = _get_db()
+    rows = conn.execute(
+        'SELECT gene, fetched, ev_limit, json_array_length(statements) FROM cache ORDER BY gene'
+    ).fetchall()
+    conn.close()
+    if not rows:
         return 'Cache is empty.'
-    lines = [f'INDRA DB cache: {len(cache)} genes\n']
+    lines = [f'INDRA DB cache: {len(rows)} genes\n']
     total = 0
-    for gene in sorted(cache):
-        entry = cache[gene]
-        n = len(entry.get('statements', []))
-        total += n
-        age = cache_age_days(gene, cache)
-        lines.append(f'  {gene:12s}  {n:5d} stmts  fetched {entry["fetched"]}'
+    for gene, fetched, ev_limit, n_stmts in rows:
+        total += n_stmts
+        fetched_date = datetime.strptime(fetched, '%Y-%m-%d').date()
+        age = (date.today() - fetched_date).days
+        lines.append(f'  {gene:12s}  {n_stmts:5d} stmts  fetched {fetched}'
                       f'  ({age}d ago)')
     lines.append(f'\nTotal: {total} cached statements')
     return '\n'.join(lines)
@@ -193,10 +241,10 @@ def cache_summary() -> str:
 def invalidate_cache(genes: Optional[list[str]] = None):
     """Remove genes from cache. If genes is None, clear everything."""
     if genes is None:
-        if CACHE_PATH.exists():
-            CACHE_PATH.unlink()
+        if CACHE_DB.exists():
+            CACHE_DB.unlink()
         return
-    cache = load_cache()
-    for g in genes:
-        cache.pop(g, None)
-    save_cache(cache)
+    conn = _get_db()
+    conn.executemany('DELETE FROM cache WHERE gene = ?', [(g,) for g in genes])
+    conn.commit()
+    conn.close()
