@@ -72,11 +72,16 @@ project/
 ├── .mcp.json                    MCP server config for Claude Code
 ├── pixi.toml                    Environment and task definitions
 │
-├── mcp_server.py                FastMCP server — 12 tools
-├── gene_registry.py             Registry helpers for notebook use
+├── mcp_server.py                FastMCP server — 16 tools
+├── statement_store.py           Statement I/O, queries, and browsing helpers
+├── gene_registry.py             Gene attribute registry helpers
+├── indra_cache.py               INDRA DB cache layer (used by MCP + notebook)
+├── visualization.py             Interactive (ipycytoscape) + static (graph-tool) graphs
+├── utils.py                     Notebook-specific: graph-tool traversal, circos plot
 │
 ├── statements.json              INDRA statement store  ← auto-managed, commit this
-├── gene_registry.json           Gene attribute registry ← auto-managed, commit this
+├── genes.json                   Gene attribute registry ← auto-managed, commit this
+├── indra_db_cache.json          Per-gene INDRA DB query cache (auto-managed)
 ├── pending_extraction.json      Transient — NL extraction staging (do not commit)
 │
 ├── interaction_store.ipynb      Exploratory analysis notebook
@@ -88,10 +93,12 @@ project/
         ├── enrich-gene.md       /is-enrich-gene
         ├── rescue-analysis.md   /is-rescue-analysis
         ├── render-network.md    /is-render-network
-        └── new-gene-list.md     /is-new-gene-list
+        ├── new-gene-list.md     /is-new-gene-list
+        ├── browse.md            /is-browse
+        └── extract-from-text.md /is-extract-from-text
 ```
 
-The two JSON files (`statements.json`, `gene_registry.json`) are the
+The two JSON files (`statements.json`, `genes.json`) are the
 persistent artefacts. Everything else is tooling around them.
 **Both should be committed to version control** — they are the growing
 record of the network.
@@ -185,7 +192,7 @@ Loaded and saved by the store helpers in both `mcp_server.py` and
 
 ### Gene registry
 
-`gene_registry.json` — a JSON object mapping gene name → attribute dict.
+`genes.json` — a JSON object mapping gene name → attribute dict.
 Carries gene-level metadata that does not fit into INDRA's data model:
 chromosome, group membership, analysis provenance, rescue logic,
 expression context, haplogroup effects, and literature references.
@@ -572,7 +579,7 @@ save_store(stmts)
 ## 9. The gene registry
 
 The registry is a JSON object mapping gene name → attribute dict,
-stored in `gene_registry.json`. It is intentionally separate from the
+stored in `genes.json`. It is intentionally separate from the
 statement store so that gene-level metadata can be queried and updated
 independently of the interaction graph.
 
@@ -621,8 +628,7 @@ independently of the interaction graph.
 from gene_registry import (
     load_registry, save_registry,
     add_gene, update_gene, add_to_group, add_reference,
-    group_members, get_by_chromosome, rescue_candidates,
-    enrich_graph, summarise,
+    group_members, enrich_graph, query_genes,
 )
 
 # Add a new gene
@@ -640,16 +646,13 @@ add_to_group('HDAC6', 'MT lattice/transport')
 # Append a reference
 add_reference('SORCS3', pmid='29656857', note='SORCS3 in ADHD GWAS')
 
-# Query
-x_genes    = get_by_chromosome('X')
+# Query (replaces get_by_chromosome, rescue_candidates)
+x_genes    = query_genes(chromosome='^X$')
 mt_members = group_members('MT lattice/transport')
-candidates = rescue_candidates()
+candidates = query_genes(rescue_logic=r'rheostat|paralog_backup')
 
-# Print full summary
-summarise()
-
-# Enrich NetworkX graph nodes with registry attributes
-enrich_graph(G)   # adds chromosome, groups, rescue_logic to G.nodes
+# Enrich graph-tool graph nodes with registry attributes
+enrich_graph(G, G.vp['name'])  # adds chromosome, groups, rescue_logic
 ```
 
 ### Defined gene groups
@@ -896,7 +899,7 @@ context, and references.
 
 ---
 
-**`gene_info`**
+**`gene_data`**
 
 Show everything recorded about a gene: full registry entry (chromosome,
 groups, analysis origin, references, notes) plus all interactions from
@@ -1082,7 +1085,7 @@ persistent files, suited to longer analytical sessions.
 | Cell | Purpose |
 |---|---|
 | 1 — Imports | All dependencies; install line at top for Pixi/pip |
-| 2 — Helpers | `load_store`, `save_store`, `add_statements`, `ev()`, `ag()`, `summarise()` |
+| 2 — Helpers | `load_store`, `save_store`, `add_statements`, `ev()`, `ag()`, `summarize()` (from `statement_store`) |
 | 3 — Seed | Initial 22-statement network; guard prevents re-seeding |
 | 4 — Add new | Template cell for appending new interactions |
 | 5 — INDRA DB | Query and optionally persist from public database |
@@ -1103,30 +1106,33 @@ path_between('ADRA2C', 'MT_lattice')
 stmts = stmts_for('IRS2')
 ```
 
-### Browsing helpers (`gene_registry.py`)
+### Browsing helpers
 
-These functions return Python data structures, suitable for notebook
-use, scripting, and programmatic access.
+Registry browsing helpers live in `gene_registry.py`; statement browsing
+helpers live in `statement_store.py`. All return Python data structures,
+suitable for notebook use, scripting, and programmatic access.
 
 ```python
 from gene_registry import (
-    gene_info,        # full registry entry for one gene
+    gene_data,        # full registry entry for one gene
     all_groups,       # all groups with their members
+    genes_by_group,   # genes belonging to a named group → GeneList
+    query_genes,      # filter registry by gene/group/chrom → dict[str, dict]
+)
+from statement_store import (
     all_contexts,     # context tags with counts
     genes_by_context, # genes in statements with a context tag → GeneList
-    genes_by_group,   # genes belonging to a named group → GeneList
     interactors,      # interaction partners for a gene
-    query_statements,     # filter statements by gene/type/context → list[dict]
-    query_genes,       # filter registry by gene/group/chrom → dict[str, dict]
+    query_statements, # filter statements by gene/type/context → list[dict]
 )
 ```
 
-**`gene_info(gene) → dict | None`**
+**`gene_data(gene) → dict | None`**
 
 Returns the full registry entry for a gene, or `None` if not registered.
 
 ```python
->>> gene_info('MAPT')
+>>> gene_data('MAPT')
 {'chromosome': 'auto', 'groups': ['MT lattice/transport'],
  'notes': 'Microtubule-associated protein tau. ...'}
 ```
@@ -1194,6 +1200,7 @@ for OR.
 >>> query_statements(type='Phospho.*')
 [{'type': 'Phosphorylation', 'enz': {'name': 'PKA', ...}, ...}, ...]
 
+>>> query_statements(gene=r'DYN.*')                  # match any agent name (regex)
 >>> query_statements(evidence_text='kinase')         # evidence[*].text
 >>> query_statements(subj_name='ADRA2C')             # subj.name
 >>> query_statements(evidence_annotations_context='cAMP', type='Activation')
@@ -1520,7 +1527,7 @@ parameter of the `ev()` wrapper.
 
 ### 17.2 Rescue logic values
 
-Used in `gene_registry.json['rescue_logic']`.
+Used in `genes.json['rescue_logic']`.
 
 | Value | Meaning |
 |---|---|
@@ -1531,7 +1538,7 @@ Used in `gene_registry.json['rescue_logic']`.
 
 ### 17.3 Analysis source values
 
-Used in `gene_registry.json['analysis_origin']['source']`.
+Used in `genes.json['analysis_origin']['source']`.
 
 | Value | Meaning |
 |---|---|

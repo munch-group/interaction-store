@@ -16,7 +16,7 @@ Parse the arguments and call the appropriate MCP tool:
 
 - "contexts" or no arguments → call `list_contexts`
 - "context <TAG>" → call `genes_by_context(context=TAG)`
-- "gene <GENE>" or just a gene name → call `gene_info(gene=GENE)`
+- "gene <GENE>" or just a gene name → call `gene_data(gene=GENE)`
 - "interactions <GENE>" → call `gene_interactions(gene=GENE)`
 - "groups" → call `list_groups`
 

@@ -17,13 +17,13 @@ Cache structure:
 }
 
 Usage:
-    from indra_cache import cached_get_statements, load_cache
+    from indra_cache import cached_get_statements
 
     # Single gene (checks cache first, queries API on miss)
     stmts = cached_get_statements('ADRA2C', ev_limit=5)
 
-    # Batch
-    all_stmts = get_statements_batch(['ADRA2C', 'IRS2', 'MAPT'])
+    # Multiple genes
+    all_stmts = cached_get_statements(['ADRA2C', 'IRS2', 'MAPT'], verbose=True)
 """
 
 import json
@@ -31,18 +31,39 @@ import pathlib
 import time
 from datetime import date
 from typing import Optional
+from tqdm.auto import tqdm, trange
 
 CACHE_PATH = pathlib.Path(__file__).parent / 'indra_db_cache.json'
+
+
+def _atomic_json_write(path: pathlib.Path, data, **kwargs):
+    """Write JSON atomically: temp file + rename to avoid corruption."""
+    import tempfile
+    kwargs.setdefault('indent', 2)
+    tmp_fd, tmp_path = tempfile.mkstemp(
+        dir=path.parent, suffix='.tmp', prefix=f'.{path.stem}_')
+    try:
+        with open(tmp_fd, 'w') as f:
+            json.dump(data, f, **kwargs)
+        pathlib.Path(tmp_path).replace(path)
+    except BaseException:
+        pathlib.Path(tmp_path).unlink(missing_ok=True)
+        raise
 
 
 def load_cache() -> dict:
     if not CACHE_PATH.exists():
         return {}
-    with open(CACHE_PATH) as f:
-        data = json.load(f)
+    try:
+        with open(CACHE_PATH) as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, ValueError) as exc:
+        backup = CACHE_PATH.with_suffix('.json.bak')
+        CACHE_PATH.rename(backup)
+        print(f'WARNING: indra_db_cache.json is corrupt ({exc.__class__.__name__}) — '
+              f'moved to {backup.name} and starting fresh cache.')
+        return {}
     if not isinstance(data, dict):
-        # Cache file was corrupted (e.g. overwritten with a flat list).
-        # Move it aside and start fresh so we don't block the user.
         backup = CACHE_PATH.with_suffix('.json.bak')
         CACHE_PATH.rename(backup)
         print(f'WARNING: indra_db_cache.json was not a dict — '
@@ -52,8 +73,8 @@ def load_cache() -> dict:
 
 
 def save_cache(cache: dict):
-    with open(CACHE_PATH, 'w') as f:
-        json.dump(cache, f, indent=2)
+    """Write cache atomically: write to temp file, then rename."""
+    _atomic_json_write(CACHE_PATH, cache)
 
 
 def cache_age_days(gene: str, cache: Optional[dict] = None) -> Optional[int]:
@@ -68,22 +89,28 @@ def cache_age_days(gene: str, cache: Optional[dict] = None) -> Optional[int]:
 
 
 def cached_get_statements(
-    gene: str,
+    gene: 'str | list[str]',
     ev_limit: int = 5,
     max_age_days: Optional[int] = None,
+    sleep_between: float = 1.0,
+    verbose: bool = False,
 ) -> list:
     """
-    Get INDRA statements for a gene, using cache when available.
+    Get INDRA statements for one or more genes, using cache when available.
 
     Parameters
     ----------
-    gene : str
-        Gene name to query.
+    gene : str or list[str]
+        Gene name(s) to query.
     ev_limit : int
         Max evidence objects per statement (passed to INDRA API).
     max_age_days : int, optional
         If set, re-query if cached result is older than this many days.
         If None, cached results never expire (delete manually to refresh).
+    sleep_between : float
+        Seconds to sleep between API calls (only for multi-gene queries).
+    verbose : bool
+        Print progress per gene.
 
     Returns
     -------
@@ -91,84 +118,58 @@ def cached_get_statements(
     """
     from indra.statements import stmts_from_json, stmts_to_json
 
+    genes = [gene] if isinstance(gene, str) else list(gene)
     cache = load_cache()
-    entry = cache.get(gene)
-
-    # Check cache hit
-    if entry is not None:
-        expired = False
-        if max_age_days is not None:
-            age = cache_age_days(gene, cache)
-            expired = age is not None and age > max_age_days
-        if not expired:
-            return stmts_from_json(entry['statements'])
-
-    # Cache miss — query API
-    from indra.sources.indra_db_rest import get_statements
-    proc = get_statements(agents=[gene], ev_limit=ev_limit)
-    stmts = proc.statements
-
-    # Store in cache
-    cache[gene] = {
-        'fetched': str(date.today()),
-        'ev_limit': ev_limit,
-        'statements': stmts_to_json(stmts),
-    }
-    save_cache(cache)
-
-    return stmts
-
-
-def get_statements_batch(
-    genes: list[str],
-    ev_limit: int = 5,
-    max_age_days: Optional[int] = None,
-    sleep_between: float = 1.0,
-    verbose: bool = True,
-) -> list:
-    """
-    Query multiple genes, using cache where possible.
-
-    Returns combined list of all statements. Prints progress if verbose.
-    """
     all_stmts = []
-    cache = load_cache()
 
-    for gene in genes:
-        entry = cache.get(gene)
+    for g in tqdm(genes):
+        entry = cache.get(g)
+
+        # Check cache hit
         hit = False
         if entry is not None:
             expired = False
             if max_age_days is not None:
-                age = cache_age_days(gene, cache)
+                age = cache_age_days(g, cache)
                 expired = age is not None and age > max_age_days
             if not expired:
                 hit = True
 
         if hit:
-            from indra.statements import stmts_from_json
             stmts = stmts_from_json(entry['statements'])
             if verbose:
-                print(f'  {gene}: {len(stmts)} statements (cached)')
+                print(f'  {g}: {len(stmts)} statements (cached)')
         else:
             try:
-                stmts = cached_get_statements(gene, ev_limit=ev_limit,
-                                              max_age_days=max_age_days)
+                from indra.sources.indra_db_rest import get_statements
+                proc = get_statements(agents=[g], ev_limit=ev_limit)
+                stmts = proc.statements
+                cache[g] = {
+                    'fetched': str(date.today()),
+                    'ev_limit': ev_limit,
+                    'statements': stmts_to_json(stmts),
+                }
+                save_cache(cache)
                 if verbose:
-                    print(f'  {gene}: {len(stmts)} statements (fetched)')
-                time.sleep(sleep_between)
+                    print(f'  {g}: {len(stmts)} statements (fetched)')
+                if len(genes) > 1:
+                    time.sleep(sleep_between)
             except Exception as e:
                 if verbose:
-                    print(f'  {gene}: FAILED ({e})')
+                    print(f'  {g}: FAILED ({e})')
                 stmts = []
 
         all_stmts.extend(stmts)
 
-    if verbose:
-        print(f'\nTotal: {len(all_stmts)} statements '
-              f'({sum(1 for g in genes if g in load_cache())} cached)')
+    if verbose and len(genes) > 1:
+        n_cached = sum(1 for g in genes if g in cache)
+        print(f'\nTotal: {len(all_stmts)} statements ({n_cached} cached)')
 
     return all_stmts
+
+
+# Backward compat alias
+get_statements_batch = cached_get_statements
 
 
 def cache_summary() -> str:

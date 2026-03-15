@@ -13,7 +13,22 @@ import json
 import pathlib
 from typing import Any
 
-REGISTRY_PATH = pathlib.Path('genes.json')
+REGISTRY_PATH = pathlib.Path(__file__).parent / 'genes.json'
+
+
+def _atomic_json_write(path: pathlib.Path, data, **kwargs):
+    """Write JSON atomically: temp file + rename to avoid corruption."""
+    import tempfile
+    kwargs.setdefault('indent', 2)
+    tmp_fd, tmp_path = tempfile.mkstemp(
+        dir=path.parent, suffix='.tmp', prefix=f'.{path.stem}_')
+    try:
+        with open(tmp_fd, 'w') as f:
+            json.dump(data, f, **kwargs)
+        pathlib.Path(tmp_path).replace(path)
+    except BaseException:
+        pathlib.Path(tmp_path).unlink(missing_ok=True)
+        raise
 
 
 # ── I/O ───────────────────────────────────────────────────────────────────────
@@ -26,8 +41,9 @@ def load_registry(path=REGISTRY_PATH) -> dict:
 
 
 def save_registry(reg: dict, path=REGISTRY_PATH):
-    with open(path, 'w') as f:
-        json.dump(reg, f, indent=2, sort_keys=True)
+    """Save registry atomically."""
+    path = pathlib.Path(path)
+    _atomic_json_write(path, reg, sort_keys=True)
     print(f'Saved registry with {len(reg)} genes → {path}')
 
 
@@ -84,24 +100,6 @@ def group_members(group_name: str, path=REGISTRY_PATH) -> list[str]:
     ]
 
 
-def get_by_chromosome(chrom: str, path=REGISTRY_PATH) -> list[str]:
-    """Return all genes on a given chromosome ('X', 'Y', 'auto', 'mito')."""
-    reg = load_registry(path)
-    return [
-        name for name, attrs in reg.items()
-        if attrs.get('chromosome') == chrom
-    ]
-
-
-def rescue_candidates(path=REGISTRY_PATH) -> list[str]:
-    """Return genes flagged as rescue candidates."""
-    reg = load_registry(path)
-    return [
-        name for name, attrs in reg.items()
-        if attrs.get('rescue_logic') in ('rheostat', 'paralog_backup')
-    ]
-
-
 def enrich_graph(G, name_prop, path=REGISTRY_PATH):
     """
     Copy registry attributes onto graph-tool Graph vertex property maps.
@@ -137,7 +135,7 @@ def enrich_graph(G, name_prop, path=REGISTRY_PATH):
     return G
 
 
-def gene_info(name: str, path=REGISTRY_PATH) -> dict | None:
+def gene_data(name: str, path=REGISTRY_PATH) -> dict | None:
     """Return full registry entry for a gene, or None if not found."""
     reg = load_registry(path)
     return reg.get(name)
@@ -153,86 +151,13 @@ def all_groups(path=REGISTRY_PATH) -> dict[str, list[str]]:
     return {k: sorted(v) for k, v in sorted(groups.items())}
 
 
-def all_contexts(store_path='statements.json') -> dict[str, int]:
-    """Return {context_tag: count} from the statement store."""
-    import pathlib as _pl
-    p = _pl.Path(store_path)
-    if not p.exists():
-        return {}
-    with open(p) as f:
-        raw = json.load(f)
-    contexts: dict[str, int] = {}
-    for s in raw:
-        for ev in s.get('evidence', []):
-            ctx = (ev.get('annotations') or {}).get('context')
-            if ctx:
-                contexts[ctx] = contexts.get(ctx, 0) + 1
-    return dict(sorted(contexts.items()))
-
-
-def genes_by_context(context: str, store_path='statements.json'):
-    """Return genes appearing in statements with the given context tag as a GeneList."""
-    from geneinfo.genelist import GeneList
-    import pathlib as _pl
-    p = _pl.Path(store_path)
-    if not p.exists():
-        return GeneList([])
-    with open(p) as f:
-        raw = json.load(f)
-    genes: set[str] = set()
-    for s in raw:
-        has_ctx = any(
-            context.lower() in ((ev.get('annotations') or {}).get('context') or '').lower()
-            for ev in s.get('evidence', [])
-        )
-        if has_ctx:
-            for a in _agents_from_raw(s):
-                genes.add(a)
-    return GeneList(sorted(genes))
-
-
 def genes_by_group(group_name: str, path=REGISTRY_PATH):
     """Return all genes belonging to a group as a GeneList."""
     from geneinfo.genelist import GeneList
     return GeneList(group_members(group_name, path))
 
 
-def interactors(gene: str, store_path='statements.json') -> list[dict]:
-    """
-    Return all genes that interact with *gene* in the statement store.
-
-    Returns a list of dicts:
-      [{'gene': 'MAPT', 'type': 'Phosphorylation', 'context': '...', 'refs': [...]}, ...]
-    """
-    import pathlib as _pl
-    p = _pl.Path(store_path)
-    if not p.exists():
-        return []
-    with open(p) as f:
-        raw = json.load(f)
-    results = []
-    for s in raw:
-        agents = _agents_from_raw(s)
-        if gene not in agents:
-            continue
-        partners = [a for a in agents if a != gene]
-        ev0 = s.get('evidence', [{}])[0]
-        refs = []
-        for ev in s.get('evidence', []):
-            tr = ev.get('text_refs') or {}
-            if tr.get('PMID'):
-                refs.append(f"PMID:{tr['PMID']}")
-            elif tr.get('DOI'):
-                refs.append(f"DOI:{tr['DOI']}")
-        for p_name in partners:
-            results.append({
-                'gene': p_name,
-                'type': s.get('type', '?'),
-                'context': (ev0.get('annotations') or {}).get('context', ''),
-                'refs': refs,
-            })
-    return results
-
+# ── Query engine ─────────────────────────────────────────────────────────────
 
 def _resolve_path(obj, keys: list[str]) -> list:
     """Walk a nested dict/list structure following *keys*.
@@ -329,59 +254,6 @@ def _make_path_filter(kwarg_name: str, pattern: str):
     return _filter
 
 
-def query_statements(intersection: bool = True,
-                     store_path='statements.json',
-                     **kwargs) -> list[dict]:
-    """Query the statement store, returning matching raw statement dicts.
-
-    All keyword arguments are treated as path-based regex filters.
-    Underscore-separated names map to nested dict keys, e.g.:
-
-        evidence_text='kinase'         → stmt['evidence'][*]['text']
-        evidence_annotations_context='cAMP'
-                                       → stmt['evidence'][*]['annotations']['context']
-        subj_name='ADRA2C'             → stmt['subj']['name']
-        type='Phospho.*'               → stmt['type']
-
-    When a path crosses a list (like evidence), the regex is matched
-    against every element — a hit on any element counts as a match.
-
-    Parameters
-    ----------
-    intersection : bool
-        True (default) = AND logic; False = OR logic across filters.
-    **kwargs
-        Path-based regex filters (see above).
-
-    Returns a list of raw statement dicts (as stored in statements.json).
-    """
-    import pathlib as _pl
-    p = _pl.Path(store_path)
-    if not p.exists():
-        return []
-    with open(p) as f:
-        raw = json.load(f)
-
-    str_kwargs = {k: v for k, v in kwargs.items() if isinstance(v, str)}
-    # Validate paths against a sample of entries
-    if raw and str_kwargs:
-        sample = raw[:min(5, len(raw))]
-        for kwarg_name in str_kwargs:
-            _validate_path(kwarg_name, sample)
-
-    filters = [_make_path_filter(k, v) for k, v in str_kwargs.items()]
-    # Boolean flags
-    if kwargs.get('hypothesis_only'):
-        filters.append(_make_path_filter(
-            'evidence_epistemics_hypothesis', '^True$'))
-
-    if not filters:
-        return raw
-
-    combine = all if intersection else any
-    return [s for s in raw if combine(f(s) for f in filters)]
-
-
 def query_genes(intersection: bool = True,
                 path=REGISTRY_PATH, **kwargs) -> dict[str, dict]:
     """Query the gene registry, returning matching entries.
@@ -438,41 +310,3 @@ def query_genes(intersection: bool = True,
 
     combine = all if intersection else any
     return {n: a for n, a in items if combine(f(n, a) for f in filters)}
-
-
-def _agents_from_raw(stmt_dict: dict) -> list[str]:
-    """Extract agent names from a raw statement JSON dict."""
-    names = []
-    # Complex uses 'members', others use 'subj'/'obj' or 'enz'/'sub'
-    if 'members' in stmt_dict:
-        for m in stmt_dict['members']:
-            if m and m.get('name'):
-                names.append(m['name'])
-    else:
-        for key in ('subj', 'enz', 'obj', 'sub'):
-            a = stmt_dict.get(key)
-            if a and a.get('name'):
-                names.append(a['name'])
-    return names
-
-
-def summarise(path=REGISTRY_PATH):
-    reg = load_registry(path)
-    print(f'{len(reg)} genes in registry\n')
-    by_chrom = {}
-    for name, attrs in reg.items():
-        c = attrs.get('chromosome', 'unknown')
-        by_chrom.setdefault(c, []).append(name)
-    for chrom in ('auto', 'X', 'Y', 'mito', 'unknown'):
-        genes = by_chrom.get(chrom, [])
-        if genes:
-            print(f'  {chrom:8s}: {", ".join(sorted(genes))}')
-    # Group membership
-    all_groups: dict[str, list] = {}
-    for name, attrs in reg.items():
-        for g in attrs.get('groups', []):
-            all_groups.setdefault(g, []).append(name)
-    print()
-    for group, members in sorted(all_groups.items()):
-        print(f'  [{group}]')
-        print(f'    {", ".join(sorted(members))}')

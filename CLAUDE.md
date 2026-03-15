@@ -402,21 +402,45 @@ for node in G.nodes():
 
 ```python
 from gene_registry import (
-    gene_info,        # full registry entry for one gene → dict | None
+    gene_data,        # full registry entry for one gene → dict | None
     all_groups,       # {group_name: [gene, ...]} → dict
-    all_contexts,     # {context_tag: count} from statement store → dict
-    genes_by_context, # genes in statements with a context tag → GeneList
     genes_by_group,   # genes belonging to a named group → GeneList
-    interactors,      # genes interacting with a gene → list[dict]
-    query_statements,     # filter statements by nested path kwargs → list[dict]
-    query_genes,       # filter registry by nested path kwargs → dict[str, dict]
+    query_genes,      # filter registry by nested path kwargs → dict[str, dict]
 )
 
 # Full gene info
-info = gene_info('MAPT')
+info = gene_data('MAPT')
 
 # All groups and members
 groups = all_groups()
+
+# Genes in a group (returns GeneList)
+genes = genes_by_group('MT lattice/transport')
+
+# Query genes — kwargs are underscore-separated paths, values are regexes
+query_genes(chromosome='^X$')
+query_genes(groups='cAMP', chromosome='^X$')
+query_genes(analysis_origin_source='IBDmix')
+query_genes(rescue_logic='rheostat')
+query_genes(notes='rescue')
+```
+
+### Statement store helpers (statement_store.py)
+
+```python
+from statement_store import (
+    load_store,       # list[Statement] from statements.json
+    save_store,       # persist Statement list back to JSON
+    add_statements,   # append + save
+    ev,               # convenience Evidence constructor
+    ag,               # convenience Agent constructor
+    summarize,        # print store summary
+    stmts_for,        # statements involving a gene
+    all_contexts,     # {context_tag: count} from statement store → dict
+    genes_by_context, # genes in statements with a context tag → GeneList
+    interactors,      # genes interacting with a gene → list[dict]
+    query_statements, # filter statements by nested path kwargs → list[dict]
+)
 
 # Context tags with counts
 contexts = all_contexts()
@@ -424,28 +448,20 @@ contexts = all_contexts()
 # Genes in a context (returns GeneList)
 genes = genes_by_context('cAMP/PKA')
 
-# Genes in a group (returns GeneList)
-genes = genes_by_group('MT lattice/transport')
-
 # Interaction partners
 partners = interactors('PKA')
 # → [{'gene': 'MAPT', 'type': 'Phosphorylation', 'context': '...', 'refs': [...]}, ...]
 
 # Query statements — kwargs are underscore-separated paths, values are regexes
 # AND by default; intersection=False for OR
+# Special 'gene' kwarg matches agent names (supports regex)
 query_statements(type='Phospho.*')
+query_statements(gene=r'DYN.*')
 query_statements(evidence_text='kinase')
 query_statements(evidence_annotations_context='cAMP', type='Activation')
 query_statements(subj_name='ADRA2C')
 query_statements(evidence_text_refs_PMID='10336')
 query_statements(hypothesis_only=True)  # speculative, not yet peer-reviewed
-
-# Query genes — same path-based kwargs
-query_genes(chromosome='^X$')
-query_genes(groups='cAMP', chromosome='^X$')
-query_genes(analysis_origin_source='IBDmix')
-query_genes(rescue_logic='rheostat')
-query_genes(notes='rescue')
 ```
 
 ---
@@ -460,8 +476,7 @@ so repeated queries are instant instead of taking minutes per gene.
 
 ```python
 from indra_cache import (
-    cached_get_statements,        # single gene
-    get_statements_batch,  # multiple genes with progress
+    cached_get_statements,        # single gene or list of genes
     cache_summary,                # show cached genes and ages
     invalidate_cache,             # clear specific genes or all
 )
@@ -469,11 +484,12 @@ from indra_cache import (
 # Single gene — checks cache, queries API on miss
 stmts = cached_get_statements('ADRA2C', ev_limit=5)
 
-# Batch — prints (cached) or (fetched) per gene
-all_stmts = get_statements_batch(
+# Multiple genes — prints progress with verbose=True
+all_stmts = cached_get_statements(
     ['ADRA2C', 'IRS2', 'MAPT'],
     ev_limit=5,
     max_age_days=30,   # re-fetch entries older than 30 days (None = never expire)
+    verbose=True,
 )
 
 # Inspect cache state
@@ -601,7 +617,7 @@ The local MCP server (`mcp_server.py`) exposes these tools to Claude Code:
 | `list_contexts` | List all context tags in the statement store with counts |
 | `genes_by_context` | List genes appearing in statements with a given context |
 | `gene_interactions` | List all interactions for a specific gene |
-| `gene_info` | Show full registry + interaction info for a gene |
+| `gene_data` | Show full registry + interaction info for a gene |
 | `list_groups` | List all gene groups with their members |
 
 ### Starting the server
@@ -634,12 +650,15 @@ project/
 ├── CLAUDE.md                   ← this file (read automatically by Claude Code)
 ├── .mcp.json                   ← MCP server config for Claude Code
 ├── pixi.toml                   ← environment and task definitions
-├── mcp_server.py               ← FastMCP server (10 tools)
-├── statements.json             ← INDRA statement store (auto-managed)
-├── gene_registry.json          ← gene attribute registry (auto-managed)
-├── indra_db_cache.json         ← per-gene INDRA DB query cache (auto-managed)
-├── gene_registry.py            ← registry helpers for notebooks
+├── mcp_server.py               ← FastMCP server (16 tools)
+├── statement_store.py           ← statement I/O, queries, and browsing helpers
+├── gene_registry.py            ← gene attribute registry helpers
 ├── indra_cache.py              ← INDRA DB cache layer (used by MCP + notebook)
+├── visualization.py            ← interactive (ipycytoscape) + static (graph-tool) graphs
+├── utils.py                    ← notebook-specific: graph-tool traversal, circos plot
+├── statements.json             ← INDRA statement store (auto-managed)
+├── genes.json                  ← gene attribute registry (auto-managed)
+├── indra_db_cache.json         ← per-gene INDRA DB query cache (auto-managed)
 ├── interaction_store.ipynb     ← exploratory analysis notebook
 ├── interaction_network.png     ← rendered graph (regenerated on demand)
 └── .claude/
@@ -648,5 +667,7 @@ project/
         ├── enrich-gene.md
         ├── rescue-analysis.md
         ├── render-network.md
-        └── new-gene-list.md
+        ├── new-gene-list.md
+        ├── browse.md
+        └── extract-from-text.md
 ```

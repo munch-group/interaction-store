@@ -39,80 +39,25 @@ from fastmcp import FastMCP
 # ── paths ─────────────────────────────────────────────────────────────────────
 BASE          = pathlib.Path(__file__).parent
 STORE_PATH    = BASE / 'statements.json'
-REGISTRY_PATH = BASE / 'genes.json'
 
-# ── lazy INDRA imports (only needed at call time) ─────────────────────────────
-def _indra():
-    from indra.statements import (
-        Agent, Evidence,
-        Activation, Inhibition,
-        Phosphorylation, Dephosphorylation,
-        Ubiquitination, Deubiquitination,
-        Acetylation, Deacetylation,
-        Methylation, Demethylation,
-        IncreaseAmount, DecreaseAmount,
-        Complex, Translocation,
-        stmts_to_json, stmts_from_json,
-    )
-    from indra.assemblers.indranet import IndraNetAssembler
-    return locals()
-
-
-# ── store I/O ─────────────────────────────────────────────────────────────────
-def _load_store():
-    from indra.statements import stmts_from_json
-    if not STORE_PATH.exists():
-        return []
-    with open(STORE_PATH) as f:
-        return stmts_from_json(json.load(f))
-
-
-def _save_store(stmts):
-    from indra.statements import stmts_to_json
-    with open(STORE_PATH, 'w') as f:
-        json.dump(stmts_to_json(stmts), f, indent=2)
-
-
-def _load_registry() -> dict:
-    if not REGISTRY_PATH.exists():
-        return {}
-    with open(REGISTRY_PATH) as f:
-        return json.load(f)
-
-
-def _save_registry(reg: dict):
-    with open(REGISTRY_PATH, 'w') as f:
-        json.dump(reg, f, indent=2, sort_keys=True)
-
-
-def _make_agent(name: str, hgnc: str = None, up: str = None):
-    from indra.statements import Agent
-    db_refs = {}
-    if hgnc: db_refs['HGNC'] = str(hgnc)
-    if up:   db_refs['UP']   = up
-    return Agent(name, db_refs=db_refs or None)
-
-
-def _make_evidence(text: str, pmid: str = None, doi: str = None,
-                   context: str = None, hypothesis: bool = False,
-                   direct: bool = True, species: str = 'Homo_sapiens'):
-    from indra.statements import Evidence
-    text_refs = {}
-    if pmid: text_refs['PMID'] = str(pmid)
-    if doi:  text_refs['DOI']  = doi
-    return Evidence(
-        text=text,
-        source_api='manual',
-        pmid=pmid,
-        text_refs=text_refs or None,
-        annotations={
-            'date':       str(date.today()),
-            'context':    context or 'exploratory',
-            'directness': 'direct' if direct else 'indirect',
-            'species':    species,
-        },
-        epistemics={'hypothesis': hypothesis},
-    )
+# ── delegated imports ─────────────────────────────────────────────────────────
+from statement_store import (
+    load_store as _load_store,
+    save_store as _save_store,
+    ag as _make_agent,
+    ev as _make_evidence,
+    all_contexts as _all_contexts,
+    genes_by_context as _genes_by_context,
+    interactors as _interactors,
+)
+from gene_registry import (
+    load_registry as _load_registry,
+    save_registry as _save_registry,
+    group_members as _group_members,
+    all_groups as _all_groups,
+    gene_data as _gene_data,
+    query_genes as _query_genes,
+)
 
 
 # ── genome coordinates ─────────────────────────────────────────────────────────
@@ -191,7 +136,7 @@ def add_statement(
     obj  = _make_agent(object,  hgnc=object_hgnc)
     ev   = _make_evidence(evidence_text, pmid=pmid, doi=doi,
                           context=context, hypothesis=hypothesis,
-                          direct=direct, species=species)
+                          direct=direct)
 
     # Build statement — handle type families
     mod_types = {
@@ -513,23 +458,21 @@ def query_registry(
     Filter by gene name, group membership, chromosome, rescue
     candidacy, or analysis of origin.
     """
-    reg = _load_registry()
-    items = list(reg.items())
-
+    # Build kwargs for query_genes
+    kwargs = {}
     if gene:
-        items = [(n, a) for n, a in items if n == gene]
+        kwargs['gene'] = f'^{gene}$'
     if group:
-        items = [(n, a) for n, a in items
-                 if group in a.get('groups', [])]
+        kwargs['groups'] = group
     if chromosome:
-        items = [(n, a) for n, a in items
-                 if a.get('chromosome') == chromosome]
+        kwargs['chromosome'] = f'^{chromosome}$'
     if rescue_only:
-        items = [(n, a) for n, a in items
-                 if a.get('rescue_logic') not in (None, 'none')]
+        kwargs['rescue_logic'] = r'rheostat|paralog_backup|partial'
     if analysis:
-        items = [(n, a) for n, a in items
-                 if analysis in (a.get('analysis_origin') or {}).get('analysis', '')]
+        kwargs['analysis_origin_analysis'] = analysis
+
+    result = _query_genes(**kwargs) if kwargs else _query_genes()
+    items = list(result.items())
 
     if not items:
         return 'No registry entries match the query.'
@@ -558,9 +501,7 @@ def query_registry(
 @mcp.tool
 def get_gene_group(group_name: str) -> str:
     """Return all genes belonging to a named group."""
-    reg = _load_registry()
-    members = [n for n, a in reg.items()
-               if group_name in a.get('groups', [])]
+    members = _group_members(group_name)
     if not members:
         return f'No genes found in group "{group_name}".'
     return f'Group "{group_name}" ({len(members)} genes):\n  ' + \
@@ -583,10 +524,7 @@ def list_registry_summary() -> str:
         c = attrs.get('chromosome', 'unknown')
         by_chrom.setdefault(c, []).append(name)
 
-    all_groups: dict[str, list] = {}
-    for name, attrs in reg.items():
-        for g in attrs.get('groups', []):
-            all_groups.setdefault(g, []).append(name)
+    groups = _all_groups()
 
     rescue = [n for n, a in reg.items()
               if a.get('rescue_logic') not in (None, 'none')]
@@ -604,7 +542,7 @@ def list_registry_summary() -> str:
             lines.append(f'{chrom:8s}: {", ".join(genes)}')
 
     lines.append('\nGroups:')
-    for g, members in sorted(all_groups.items()):
+    for g, members in sorted(groups.items()):
         lines.append(f'  [{g}]\n    {", ".join(sorted(members))}')
 
     lines.append(f'\nRescue candidates: {", ".join(sorted(rescue))}')
@@ -626,8 +564,7 @@ def list_contexts() -> str:
     """
     List all context tags used in the statement store with counts.
     """
-    from gene_registry import all_contexts
-    contexts = all_contexts(str(STORE_PATH))
+    contexts = _all_contexts()
     if not contexts:
         return 'No context tags found.'
     lines = [f'{len(contexts)} context tags:\n']
@@ -642,8 +579,7 @@ def genes_by_context(context: str) -> str:
     List all genes appearing in statements with a given context tag.
     Case-insensitive substring match.
     """
-    from gene_registry import genes_by_context as _genes_by_context
-    genes = list(_genes_by_context(context, str(STORE_PATH)))
+    genes = list(_genes_by_context(context))
     if not genes:
         return f'No genes found for context "{context}".'
     return (
@@ -658,8 +594,7 @@ def gene_interactions(gene: str) -> str:
     List all genes that interact with a specific gene in the store,
     with statement type, context, and references.
     """
-    from gene_registry import interactors
-    hits = interactors(gene, str(STORE_PATH))
+    hits = _interactors(gene)
     if not hits:
         return f'No interactions found for {gene}.'
     lines = [f'{gene} — {len(hits)} interaction(s):\n']
@@ -679,8 +614,7 @@ def gene_info(gene: str) -> str:
     Show all recorded information about a gene: registry entry
     plus all statements involving it.
     """
-    from gene_registry import gene_info, interactors
-    info = gene_info(gene)
+    info = _gene_data(gene)
     if info is None:
         reg_section = f'{gene} is not in the registry.'
     else:
@@ -710,7 +644,7 @@ def gene_info(gene: str) -> str:
         reg_section = '\n'.join(lines)
 
     # Interactions
-    hits = interactors(gene, str(STORE_PATH))
+    hits = _interactors(gene)
     if hits:
         int_lines = [f'\n{len(hits)} interaction(s):']
         for h in hits:
@@ -728,8 +662,7 @@ def gene_info(gene: str) -> str:
 @mcp.tool
 def list_groups() -> str:
     """List all gene groups in the registry with their members."""
-    from gene_registry import all_groups
-    groups = all_groups()
+    groups = _all_groups()
     if not groups:
         return 'No groups found.'
     lines = [f'{len(groups)} group(s):\n']
@@ -742,58 +675,6 @@ def list_groups() -> str:
 # ════════════════════════════════════════════════════════════════════════════
 # GRAPH TOOL
 # ════════════════════════════════════════════════════════════════════════════
-
-def _build_gt_graph(stmts, reg):
-    """
-    Build a graph-tool directed Graph from INDRA statements + registry.
-
-    Returns (G, name_prop, stmt_type_prop) where the property maps are
-    also attached as G.vp['name'] and G.ep['stmt_type'].
-    """
-    from graph_tool import Graph as GTGraph
-
-    G = GTGraph(directed=True)
-    name_prop = G.new_vertex_property('string')
-    G.vp['name'] = name_prop
-
-    chrom_prop = G.new_vertex_property('string')
-    G.vp['chromosome'] = chrom_prop
-
-    stmt_type_prop = G.new_edge_property('string')
-    G.ep['stmt_type'] = stmt_type_prop
-
-    # Build node index
-    node_idx: dict[str, int] = {}
-
-    def _get_or_add(name: str):
-        if name not in node_idx:
-            v = G.add_vertex()
-            idx = int(v)
-            node_idx[name] = idx
-            name_prop[v] = name
-            info = reg.get(name, {})
-            chrom_prop[v] = info.get('chromosome', 'unknown')
-        return G.vertex(node_idx[name])
-
-    for s in stmts:
-        agents = [a for a in s.agent_list() if a is not None]
-        stype = type(s).__name__
-
-        if stype == 'Complex':
-            # Undirected: add edges both ways for visibility
-            for i, a in enumerate(agents):
-                for b in agents[i+1:]:
-                    va, vb = _get_or_add(a.name), _get_or_add(b.name)
-                    e = G.add_edge(va, vb)
-                    stmt_type_prop[e] = 'Complex'
-        elif len(agents) >= 2:
-            va = _get_or_add(agents[0].name)
-            vb = _get_or_add(agents[-1].name)
-            e = G.add_edge(va, vb)
-            stmt_type_prop[e] = stype
-
-    return G, name_prop, stmt_type_prop
-
 
 @mcp.tool
 def render_network(
@@ -808,102 +689,22 @@ def render_network(
 
     If genes is provided, only statements involving those genes are included.
     """
-    from graph_tool import Graph as GTGraph
-    from graph_tool.draw import graph_draw, sfdp_layout
+    from visualization import save_static_png
 
     stmts = _load_store()
     reg   = _load_registry()
-    out   = str(pathlib.Path(output_path or (BASE / 'interaction_network.png')))
+    out   = output_path or str(BASE / 'interaction_network.png')
 
+    result = save_static_png(stmts, reg, output=out, genes=genes)
+
+    n_stmts = len(stmts)
     if genes:
         gene_set = set(genes)
-        stmts = [s for s in stmts
-                 if any(a is not None and a.name in gene_set
-                        for a in s.agent_list())]
+        n_stmts = sum(1 for s in stmts
+                       if any(a is not None and a.name in gene_set
+                              for a in s.agent_list()))
 
-    G, name_prop, stmt_type_prop = _build_gt_graph(stmts, reg)
-    chrom_prop = G.vp['chromosome']
-
-    COLORS = {
-        'auto': [0.357, 0.608, 0.835, 1.0],
-        'X':    [0.851, 0.373, 0.373, 1.0],
-        'Y':    [0.910, 0.627, 0.125, 1.0],
-        'unknown': [0.855, 0.867, 0.882, 1.0],
-    }
-    EDGE_COLORS = {
-        'Activation':      [0.153, 0.682, 0.376, 0.8],
-        'Inhibition':      [0.753, 0.224, 0.169, 0.8],
-        'Phosphorylation': [0.161, 0.502, 0.725, 0.8],
-        'IncreaseAmount':  [0.153, 0.682, 0.376, 0.8],
-        'DecreaseAmount':  [0.753, 0.224, 0.169, 0.8],
-        'Complex':         [0.533, 0.533, 0.533, 0.8],
-    }
-    DEFAULT_EDGE = [0.667, 0.667, 0.667, 0.8]
-
-    # Vertex fill colour
-    vfill = G.new_vertex_property('vector<double>')
-    valpha = G.new_vertex_property('double')
-    for v in G.vertices():
-        c = chrom_prop[v]
-        vfill[v] = COLORS.get(c, COLORS['unknown'])
-        valpha[v] = 0.92
-
-    # Highlight mode
-    if highlight_gene:
-        name_to_v = {name_prop[v]: v for v in G.vertices()}
-        hv = name_to_v.get(highlight_gene)
-        if hv is not None:
-            nbrs = set()
-            for e in hv.out_edges():
-                nbrs.add(int(e.target()))
-            for e in hv.in_edges():
-                nbrs.add(int(e.source()))
-            nbrs.add(int(hv))
-            for v in G.vertices():
-                if int(v) not in nbrs:
-                    vfill[v] = [0.933, 0.933, 0.933, 1.0]
-                    valpha[v] = 0.25
-
-    # Edge colour
-    ecolor = G.new_edge_property('vector<double>')
-    for e in G.edges():
-        st = stmt_type_prop[e]
-        ecolor[e] = EDGE_COLORS.get(st, DEFAULT_EDGE)
-
-    # Edge dash for Complex
-    edash = G.new_edge_property('vector<double>')
-    for e in G.edges():
-        if stmt_type_prop[e] == 'Complex':
-            edash[e] = [0.02, 0.01]
-        else:
-            edash[e] = []
-
-    # Layout
-    pos = sfdp_layout(G)
-
-    graph_draw(
-        G, pos=pos,
-        vertex_fill_color=vfill,
-        vertex_color=[0.2, 0.2, 0.2, 0.6],
-        vertex_size=28,
-        vertex_text=name_prop,
-        vertex_text_color=[1, 1, 1, 1],
-        vertex_font_size=8,
-        vertex_font_weight=1,  # cairo.FONT_WEIGHT_BOLD
-        edge_color=ecolor,
-        edge_pen_width=2.0,
-        edge_dash_style=edash,
-        edge_marker_size=12,
-        output_size=(1800, 1300),
-        output=out,
-    )
-
-    n_nodes = G.num_vertices()
-    n_edges = G.num_edges()
-    return (
-        f'Graph saved → {out}\n'
-        f'{n_nodes} nodes, {n_edges} edges.'
-    )
+    return f'Graph saved → {result}\n{n_stmts} statements rendered.'
 
 
 # ════════════════════════════════════════════════════════════════════════════

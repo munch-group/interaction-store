@@ -9,10 +9,23 @@ Public API
 interactive_network(stmts, reg, G=None, highlight=None, **kwargs) -> ipywidgets.VBox
 save_static_png(stmts, reg, G=None, output='interaction_network.png', size=(1800,1300), **kwargs) -> str
 
+Mapping kwargs
+--------------
+fill_by          : str   — registry field for node fill colour (default 'chromosome').
+                   Multi-valued fields (e.g. 'groups', 'contexts') render as pie charts.
+border_by        : str   — registry field for node border colour (default 'groups').
+                   Must be single-valued; multi-valued fields raise ValueError.
+fill_colors      : dict  — {value: hex_color} generic overrides for fill_by colours
+border_colors    : dict  — {value: hex_color} generic overrides for border_by colours
+chromosome_colors: dict  — {value: hex_color} for chromosome field (applied when
+                   fill_by or border_by is 'chromosome')
+group_colors     : dict  — {group_name: hex_color} for groups field (applied when
+                   fill_by or border_by is 'groups')
+context_colors   : dict  — {context_tag: hex_color} for contexts field (applied when
+                   fill_by or border_by is 'contexts')
+
 Style kwargs (all optional, applied to both functions where applicable)
 -----------------------------------------------------------------------
-chrom_colors     : dict  — chromosome -> hex colour, e.g. {'auto': '#5B9BD5', 'X': '#D95F5F'}
-module_colors    : dict  — module name -> hex border colour
 edge_colors      : dict  — statement type -> hex colour, e.g. {'Activation': '#27AE60'}
 node_size        : int   — node diameter in px (default 45 interactive, 28 static)
 node_shape       : str   — cytoscape.js shape name (default 'ellipse', which renders as a
@@ -28,6 +41,9 @@ edge_width       : int   — edge line width in px (default 2)
 background_color : str   — canvas/background colour (default 'transparent');
                    for static PNG default is '#FFFFFF'
 """
+
+import math
+import base64
 
 # ── default colour / style constants ─────────────────────────────────────────
 
@@ -97,6 +113,184 @@ EDGE_ARROW_SHAPES = {
 }
 
 
+# ── field resolution helpers ─────────────────────────────────────────────────
+
+def _resolve_field(name, reg, field):
+    """Extract field values from registry for a gene. Returns list of strings.
+
+    Supports dotted paths (e.g. 'analysis_origin.source') and list fields
+    (e.g. 'groups'). Always returns a list; single-valued fields return a
+    one-element list.
+    """
+    entry = reg.get(name, {})
+    for part in field.split('.'):
+        if isinstance(entry, dict):
+            entry = entry.get(part)
+        else:
+            return ['unknown']
+    if entry is None:
+        return ['unknown']
+    if isinstance(entry, list):
+        return entry if entry else ['unknown']
+    return [str(entry)]
+
+
+def _resolve_border_field(name, reg, field):
+    """Extract a single border value from registry for a gene.
+
+    For multi-valued fields like 'groups', returns the primary module
+    (first matching from MODULE_PRIORITY) to produce a single value.
+    For single-valued fields, delegates to _resolve_field.
+    """
+    if field == 'groups':
+        return _primary_module(name, reg)
+    vals = _resolve_field(name, reg, field)
+    return vals[0]
+
+
+def _is_multi_valued(reg, field):
+    """Return True if *any* gene in the registry has a list for *field*."""
+    for name in reg:
+        vals = _resolve_field(name, reg, field)
+        if len(vals) > 1:
+            return True
+    # Also check the raw type for the first non-None entry
+    for entry in reg.values():
+        obj = entry
+        for part in field.split('.'):
+            if isinstance(obj, dict):
+                obj = obj.get(part)
+            else:
+                obj = None
+                break
+        if isinstance(obj, list):
+            return True
+    return False
+
+
+def _auto_colors(values, palette_name='Set2'):
+    """Assign colours from a matplotlib categorical palette to distinct values.
+
+    Returns {value: '#RRGGBB'}.
+    """
+    import matplotlib.pyplot as plt
+    cmap = plt.get_cmap(palette_name)
+    sorted_vals = sorted(set(values))
+    n = max(len(sorted_vals), 1)
+    colors = {}
+    for i, val in enumerate(sorted_vals):
+        rgba = cmap(i / n if n > 1 else 0.5)
+        colors[val] = '#{:02x}{:02x}{:02x}'.format(
+            int(rgba[0] * 255), int(rgba[1] * 255), int(rgba[2] * 255))
+    return colors
+
+
+def _pie_svg(colors, size=64):
+    """Generate a data:image/svg+xml URI with equal-sized pie slices.
+
+    *colors* is a list of hex colour strings. Single colour → solid circle.
+    Empty → neutral gray circle.
+    """
+    if not colors:
+        colors = ['#DADDE1']
+    if len(colors) == 1:
+        svg = (
+            f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'width="{size}" height="{size}" viewBox="0 0 {size} {size}">'
+            f'<circle cx="{size//2}" cy="{size//2}" r="{size//2}" '
+            f'fill="{colors[0]}"/></svg>'
+        )
+    else:
+        cx = cy = size / 2
+        r = size / 2
+        n = len(colors)
+        parts = []
+        parts.append(
+            f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'width="{size}" height="{size}" viewBox="0 0 {size} {size}">'
+        )
+        for i, c in enumerate(colors):
+            start_angle = 2 * math.pi * i / n - math.pi / 2
+            end_angle = 2 * math.pi * (i + 1) / n - math.pi / 2
+            x1 = cx + r * math.cos(start_angle)
+            y1 = cy + r * math.sin(start_angle)
+            x2 = cx + r * math.cos(end_angle)
+            y2 = cy + r * math.sin(end_angle)
+            large_arc = 1 if (end_angle - start_angle) > math.pi else 0
+            parts.append(
+                f'<path d="M{cx},{cy} L{x1:.2f},{y1:.2f} '
+                f'A{r},{r} 0 {large_arc} 1 {x2:.2f},{y2:.2f} Z" '
+                f'fill="{c}"/>'
+            )
+        parts.append('</svg>')
+        svg = ''.join(parts)
+    encoded = base64.b64encode(svg.encode('utf-8')).decode('ascii')
+    return f'data:image/svg+xml;base64,{encoded}'
+
+
+_GRAY = '#DADDE1'
+
+
+def _resolve_colors(reg, field, user_colors, builtin_defaults, *, border=False):
+    """Build a complete value→colour mapping for a field.
+
+    When builtin_defaults or user_colors are provided, only explicitly
+    listed values get colours — all others default to gray.  When neither
+    is provided, colours are auto-generated from a categorical palette.
+
+    When *border* is True, uses _resolve_border_field (single-valued) to
+    collect the values that actually appear.
+    """
+    # Collect all distinct values across registry
+    all_vals = set()
+    for name in reg:
+        if border:
+            all_vals.add(_resolve_border_field(name, reg, field))
+        else:
+            all_vals.update(_resolve_field(name, reg, field))
+    all_vals.add('unknown')
+
+    has_explicit = bool(builtin_defaults) or bool(user_colors)
+    if has_explicit:
+        # Only explicitly listed values get colour; rest gray
+        colors = {v: _GRAY for v in all_vals}
+    else:
+        # No guidance at all — auto-generate a palette
+        colors = _auto_colors(all_vals)
+
+    colors.update(builtin_defaults)
+    if user_colors:
+        colors.update(user_colors)
+    return colors
+
+
+# Map of field names → their built-in default color dicts
+_FIELD_BUILTIN_COLORS = {
+    'chromosome': DEFAULT_CHROM_BG_COLORS,
+    'groups':     DEFAULT_MODULE_BORDER_COLORS,
+}
+
+
+def _builtin_for_field(field, chromosome_colors=None, group_colors=None,
+                       context_colors=None):
+    """Return the builtin color dict for a given field.
+
+    When a field-specific dict is provided (e.g. chromosome_colors),
+    it *replaces* the hard-coded defaults — only values explicitly
+    listed get colours; everything else falls through to gray.
+    When no field-specific dict is provided, hard-coded defaults apply.
+    """
+    field_specific = {
+        'chromosome': chromosome_colors,
+        'groups':     group_colors,
+        'contexts':   context_colors,
+    }.get(field)
+
+    if field_specific is not None:
+        return dict(field_specific)
+    return dict(_FIELD_BUILTIN_COLORS.get(field, {}))
+
+
 # ── private helpers ──────────────────────────────────────────────────────────
 
 def _filter_stmts(stmts, genes=None):
@@ -144,12 +338,12 @@ def _build_edge_evidence(stmts):
             for i, a in enumerate(agents):
                 for b in agents[i + 1:]:
                     key = (a.name, b.name, 'Complex')
-                    ev_text = s.evidence[0].text[:200] if s.evidence else ''
+                    ev_text = (s.evidence[0].text or '')[:200] if s.evidence else ''
                     ctx = s.evidence[0].annotations.get('context', '') if s.evidence else ''
                     edge_evidence[key] = (ev_text, ctx)
         elif len(agents) >= 2:
             key = (agents[0].name, agents[-1].name, stype)
-            ev_text = s.evidence[0].text[:200] if s.evidence else ''
+            ev_text = (s.evidence[0].text or '')[:200] if s.evidence else ''
             ctx = s.evidence[0].annotations.get('context', '') if s.evidence else ''
             edge_evidence[key] = (ev_text, ctx)
     return edge_evidence
@@ -193,27 +387,43 @@ def _build_graph(stmts, reg):
     return G
 
 
-def _cytoscape_json(G, reg, edge_evidence):
-    """Convert graph-tool Graph to {nodes, edges} dict for ipycytoscape."""
+def _cytoscape_json(G, reg, edge_evidence,
+                    fill_by, border_by, fill_colors, border_colors,
+                    fill_multi):
+    """Convert graph-tool Graph to {nodes, edges} dict for ipycytoscape.
+
+    When *fill_multi* is True, fill is rendered via pie SVG background images
+    and each node gets a 'bg_image' data field.
+    """
     nodes = []
     edges = []
 
     for v in G.vertices():
         name = G.vp['name'][v]
         chrom = G.vp['chromosome'][v]
-        mod = _primary_module(name, reg)
         rescue = reg.get(name, {}).get('rescue_logic', 'none')
         groups = ', '.join(reg.get(name, {}).get('groups', []))
-        info = f'{name}\nChromosome: {chrom}\nModule: {mod}\nGroups: {groups}\nRescue: {rescue}'
-        nodes.append({
-            'data': {
-                'id': name,
-                'label': name,
-                'chromosome': chrom,
-                'module': mod,
-                '_info': info,
-            },
-        })
+        info = f'{name}\nChromosome: {chrom}\nGroups: {groups}\nRescue: {rescue}'
+
+        fill_vals = _resolve_field(name, reg, fill_by)
+        border_val = _resolve_border_field(name, reg, border_by)
+
+        data = {
+            'id': name,
+            'label': name,
+            'border_val': border_val,
+            '_info': info,
+        }
+
+        if fill_multi:
+            # Only include slices for values that have an explicit colour
+            slice_colors = [fill_colors[fv] for fv in fill_vals
+                            if fill_colors.get(fv, _GRAY) != _GRAY]
+            data['bg_image'] = _pie_svg(slice_colors)
+        else:
+            data['fill_val'] = fill_vals[0]
+
+        nodes.append({'data': data})
 
     for e in G.edges():
         src = G.vp['name'][e.source()]
@@ -234,9 +444,9 @@ def _cytoscape_json(G, reg, edge_evidence):
     return {'nodes': nodes, 'edges': edges}
 
 
-def _build_style(chrom_colors, module_colors, edge_colors,
+def _build_style(fill_colors, border_colors, edge_colors,
                  node_size, node_shape, font_size, border_width, edge_width,
-                 text_color, font_weight, text_outline):
+                 text_color, font_weight, text_outline, fill_multi):
     """Return the CSS selector list for ipycytoscape."""
     node_style = {
         'label': 'data(label)',
@@ -248,10 +458,14 @@ def _build_style(chrom_colors, module_colors, edge_colors,
         'width': node_size,
         'height': node_size,
         'shape': node_shape,
-        'background-color': chrom_colors.get('unknown', '#DADDE1'),
+        'background-color': fill_colors.get('unknown', '#DADDE1'),
         'border-width': border_width,
         'border-color': '#999',
     }
+    if fill_multi:
+        node_style['background-image'] = 'data(bg_image)'
+        node_style['background-fit'] = 'cover'
+        node_style['background-color'] = '#DADDE1'
     if text_outline:
         node_style['text-outline-color'] = '#333'
         node_style['text-outline-width'] = 1
@@ -262,19 +476,20 @@ def _build_style(chrom_colors, module_colors, edge_colors,
         {'selector': 'node', 'style': node_style},
     ]
 
-    # Chromosome colouring
-    for chrom, color in chrom_colors.items():
-        if chrom == 'unknown':
-            continue
-        style.append({
-            'selector': f'node[chromosome = "{chrom}"]',
-            'style': {'background-color': color},
-        })
+    # Fill colouring (only when single-valued — pie charts handled via bg_image)
+    if not fill_multi:
+        for val, color in fill_colors.items():
+            if val == 'unknown':
+                continue
+            style.append({
+                'selector': f'node[fill_val = "{val}"]',
+                'style': {'background-color': color},
+            })
 
-    # Module border colours
-    for mod, color in module_colors.items():
+    # Border colours
+    for val, color in border_colors.items():
         style.append({
-            'selector': f'node[module = "{mod}"]',
+            'selector': f'node[border_val = "{val}"]',
             'style': {'border-color': color},
         })
 
@@ -333,7 +548,8 @@ def _build_style(chrom_colors, module_colors, edge_colors,
     return style
 
 
-def _build_legend_html(chrom_colors, module_colors, edge_colors):
+def _build_legend_html(fill_by, border_by, fill_colors, border_colors,
+                       edge_colors, fill_multi):
     """Build an HTML legend string for the info box."""
     swatch = (
         '<span style="display:inline-block; width:14px; height:14px; '
@@ -356,17 +572,18 @@ def _build_legend_html(chrom_colors, module_colors, edge_colors):
 
     parts = ['<b>Legend</b><br><br>']
 
-    # Node fill = chromosome
-    parts.append('<b>Node fill \u2014 Chromosome</b><br>')
-    chrom_labels = {'auto': 'Autosomal', 'X': 'X-linked', 'Y': 'Y-linked', 'unknown': 'Unknown/intermediate'}
-    for chrom, color in chrom_colors.items():
-        label = chrom_labels.get(chrom, chrom)
-        parts.append(swatch.format(color=color, border='#666') + f'{label}<br>')
+    # Node fill
+    fill_label = fill_by.replace('.', ' \u203a ')
+    pie_note = ' (pie chart)' if fill_multi else ''
+    parts.append(f'<b>Node fill \u2014 {fill_label}{pie_note}</b><br>')
+    for val in sorted(fill_colors):
+        parts.append(swatch.format(color=fill_colors[val], border='#666') + f'{val}<br>')
 
-    # Node border = module
-    parts.append('<br><b>Node border \u2014 Primary module</b><br>')
-    for mod, color in module_colors.items():
-        parts.append(swatch.format(color='#ccc', border=color) + f'{mod}<br>')
+    # Node border
+    border_label = border_by.replace('.', ' \u203a ')
+    parts.append(f'<br><b>Node border \u2014 {border_label}</b><br>')
+    for val in sorted(border_colors):
+        parts.append(swatch.format(color='#ccc', border=border_colors[val]) + f'{val}<br>')
 
     # Edges
     parts.append('<br><b>Edges \u2014 Interaction type</b><br>')
@@ -377,7 +594,6 @@ def _build_legend_html(chrom_colors, module_colors, edge_colors):
         dash = 'dashed' if stype == 'Complex' else 'solid'
         arrow = arrow_label.get(stype, 'triangle')
         label = f'{stype} \u2014 {arrow}'
-        # Merge Activation/IncreaseAmount and Inhibition/DecreaseAmount
         key = (color, arrow)
         if key in seen:
             continue
@@ -428,7 +644,11 @@ def _make_click_handlers(info_box, legend_html):
 
 # ── public API ───────────────────────────────────────────────────────────────
 
-def interactive_network(stmts, reg, G=None, highlight=None, genes=None, **kwargs):
+def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
+                        fill_by='chromosome', border_by='groups',
+                        fill_colors=None, border_colors=None,
+                        chromosome_colors=None, group_colors=None,
+                        context_colors=None, **kwargs):
     """
     Build an interactive ipycytoscape widget with click-to-inspect info box.
 
@@ -444,11 +664,28 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None, **kwargs
         Gene name to highlight (not yet implemented in interactive view).
     genes : list[str], optional
         Restrict graph to statements involving these genes.
+    fill_by : str
+        Registry field for node fill colour (default 'chromosome').
+        Multi-valued fields (e.g. 'groups', 'contexts') render as pie charts.
+    border_by : str
+        Registry field for node border colour (default 'groups').
+        Must be single-valued; multi-valued fields raise ValueError.
+    fill_colors : dict, optional
+        {value: hex_color} generic overrides for fill_by colours.
+    border_colors : dict, optional
+        {value: hex_color} generic overrides for border_by colours.
+    chromosome_colors : dict, optional
+        {value: hex_color} for chromosome values (e.g. 'auto', 'X', 'Y').
+        Applied whenever fill_by or border_by is 'chromosome'.
+    group_colors : dict, optional
+        {group_name: hex_color} for gene groups.
+        Applied whenever fill_by or border_by is 'groups'.
+    context_colors : dict, optional
+        {context_tag: hex_color} for context tags.
+        Applied whenever fill_by or border_by is 'contexts'.
 
     Style kwargs (all optional)
     ---------------------------
-    chrom_colors     : dict — chromosome -> hex colour
-    module_colors    : dict — module name -> hex border colour
     edge_colors      : dict — statement type -> hex colour
     node_size        : int  — node diameter in px (default 45)
     node_shape       : str  — cytoscape.js shape: 'ellipse' (circle, default),
@@ -470,14 +707,36 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None, **kwargs
     import ipywidgets as widgets
     from IPython.display import display, HTML as DisplayHTML
 
+    # Validate border_by: multi-valued fields (other than 'groups', which
+    # uses primary-module logic) cannot be used for borders.
+    if border_by != 'groups' and _is_multi_valued(reg, border_by):
+        raise ValueError(
+            f"border_by='{border_by}' is a multi-valued field and cannot be "
+            f"used for borders. Use it for fill_by instead, or choose a "
+            f"single-valued field like 'chromosome' or 'rescue_logic'."
+        )
+
+    fill_multi = _is_multi_valued(reg, fill_by)
+
     stmts = _filter_stmts(stmts, genes)
     if G is None or genes is not None:
         G = _build_graph(stmts, reg)
 
-    # Resolve style kwargs with defaults
-    chrom_colors = {**DEFAULT_CHROM_BG_COLORS, **(kwargs.get('chrom_colors') or {})}
-    module_colors = {**DEFAULT_MODULE_BORDER_COLORS, **(kwargs.get('module_colors') or {})}
-    edge_colors = {**DEFAULT_EDGE_COLORS, **(kwargs.get('edge_colors') or {})}
+    # Backward compat: chrom_colors → chromosome_colors, module_colors → group_colors
+    if kwargs.get('chrom_colors') and chromosome_colors is None:
+        chromosome_colors = kwargs['chrom_colors']
+    if kwargs.get('module_colors') and group_colors is None:
+        group_colors = kwargs['module_colors']
+
+    # Resolve colour mappings — field-specific dicts are layered into builtins
+    _fc = dict(chromosome_colors=chromosome_colors, group_colors=group_colors,
+               context_colors=context_colors)
+    fill_builtin = _builtin_for_field(fill_by, **_fc)
+    border_builtin = _builtin_for_field(border_by, **_fc)
+    resolved_fill = _resolve_colors(reg, fill_by, fill_colors, fill_builtin)
+    resolved_border = _resolve_colors(reg, border_by, border_colors, border_builtin, border=True)
+
+    edge_colors_resolved = {**DEFAULT_EDGE_COLORS, **(kwargs.get('edge_colors') or {})}
     node_size = kwargs.get('node_size', 45)
     node_shape = kwargs.get('node_shape', 'ellipse')
     font_size = kwargs.get('font_size', '10px')
@@ -489,14 +748,19 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None, **kwargs
     text_outline = kwargs.get('text_outline', True)
 
     edge_evidence = _build_edge_evidence(stmts)
-    cyto_json = _cytoscape_json(G, reg, edge_evidence)
+    cyto_json = _cytoscape_json(G, reg, edge_evidence,
+                                fill_by, border_by,
+                                resolved_fill, resolved_border,
+                                fill_multi)
 
     _box_style = (
         'padding:8px; font-size:13px; color:#333; '
         'background:#f8f8f8; border:1px solid #ddd; border-radius:4px; '
         'min-height:40px; font-family:monospace; white-space:pre-wrap;'
     )
-    legend_html = _build_legend_html(chrom_colors, module_colors, edge_colors)
+    legend_html = _build_legend_html(fill_by, border_by,
+                                     resolved_fill, resolved_border,
+                                     edge_colors_resolved, fill_multi)
     info_box = widgets.HTML(
         value=f'<div style="{_box_style}">Click a node or edge for details, or press Show Legend.</div>',
     )
@@ -504,9 +768,9 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None, **kwargs
     cyto = ipycytoscape.CytoscapeWidget()
     cyto.graph.add_graph_from_json(cyto_json, directed=True)
     cyto.set_style(_build_style(
-        chrom_colors, module_colors, edge_colors,
+        resolved_fill, resolved_border, edge_colors_resolved,
         node_size, node_shape, font_size, border_width, edge_width,
-        text_color, font_weight, text_outline,
+        text_color, font_weight, text_outline, fill_multi,
     ))
     cyto.set_layout(
         name='cose', nodeOverlap=20, idealEdgeLength=80,
@@ -518,7 +782,6 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None, **kwargs
     cyto.layout.height = '600px'
 
     # Override ipycytoscape's .custom-widget background via IPython.display.
-    # This injects CSS into the cell output context before the widget renders.
     from IPython.display import display as ipy_display, HTML as IPyHTML
     if background_color != 'transparent':
         ipy_display(IPyHTML(
@@ -542,7 +805,11 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None, **kwargs
 
 
 def save_static_png(stmts, reg, G=None, output='interaction_network.png',
-                    size=(1800, 1300), genes=None, **kwargs):
+                    size=(1800, 1300), genes=None,
+                    fill_by='chromosome', border_by='groups',
+                    fill_colors=None, border_colors=None,
+                    chromosome_colors=None, group_colors=None,
+                    context_colors=None, **kwargs):
     """
     Render a static PNG of the interaction network via graph-tool.
 
@@ -560,14 +827,31 @@ def save_static_png(stmts, reg, G=None, output='interaction_network.png',
         Image dimensions in pixels.
     genes : list[str], optional
         Restrict graph to statements involving these genes.
+    fill_by : str
+        Registry field for node fill colour (default 'chromosome').
+        Multi-valued fields use the first value with a warning.
+    border_by : str
+        Registry field for node border (outline) colour (default 'groups').
+        Must be single-valued; multi-valued fields raise ValueError.
+    fill_colors : dict, optional
+        {value: hex_color} generic overrides for fill_by colours.
+    border_colors : dict, optional
+        {value: hex_color} generic overrides for border_by colours.
+    chromosome_colors : dict, optional
+        {value: hex_color} for chromosome values. Applied when fill_by or
+        border_by is 'chromosome'.
+    group_colors : dict, optional
+        {group_name: hex_color} for gene groups. Applied when fill_by or
+        border_by is 'groups'.
+    context_colors : dict, optional
+        {context_tag: hex_color} for context tags. Applied when fill_by or
+        border_by is 'contexts'.
 
     Style kwargs (all optional)
     ---------------------------
-    chrom_colors     : dict — chromosome -> hex colour (converted to RGBA)
     edge_colors      : dict — statement type -> hex colour (converted to RGBA)
     node_size        : int  — vertex size (default 28)
     font_size        : int  — vertex label font size (default 8)
-    border_width     : float — not used by graph-tool (vertex_color controls border)
     edge_width       : float — edge pen width (default 2.0)
     background_color : str  — hex colour for image background (default '#FFFFFF')
 
@@ -576,13 +860,43 @@ def save_static_png(stmts, reg, G=None, output='interaction_network.png',
     str — output file path.
     """
     import graph_tool.all as gt
+    import warnings
+
+    # Validate border_by: multi-valued fields (other than 'groups', which
+    # uses primary-module logic) cannot be used for borders.
+    if border_by != 'groups' and _is_multi_valued(reg, border_by):
+        raise ValueError(
+            f"border_by='{border_by}' is a multi-valued field and cannot be "
+            f"used for borders. Use it for fill_by instead, or choose a "
+            f"single-valued field like 'chromosome' or 'rescue_logic'."
+        )
+
+    fill_multi = _is_multi_valued(reg, fill_by)
+    if fill_multi:
+        warnings.warn(
+            f"fill_by='{fill_by}' is multi-valued; graph-tool does not support "
+            f"pie charts — using the first value for each gene.",
+            stacklevel=2,
+        )
 
     stmts = _filter_stmts(stmts, genes)
     if G is None or genes is not None:
         G = _build_graph(stmts, reg)
 
-    # Resolve style kwargs
-    chrom_colors_hex = {**DEFAULT_CHROM_BG_COLORS, **(kwargs.get('chrom_colors') or {})}
+    # Backward compat: chrom_colors → chromosome_colors, module_colors → group_colors
+    if kwargs.get('chrom_colors') and chromosome_colors is None:
+        chromosome_colors = kwargs['chrom_colors']
+    if kwargs.get('module_colors') and group_colors is None:
+        group_colors = kwargs['module_colors']
+
+    # Resolve colour mappings — field-specific dicts are layered into builtins
+    _fc = dict(chromosome_colors=chromosome_colors, group_colors=group_colors,
+               context_colors=context_colors)
+    fill_builtin = _builtin_for_field(fill_by, **_fc)
+    border_builtin = _builtin_for_field(border_by, **_fc)
+    resolved_fill = _resolve_colors(reg, fill_by, fill_colors, fill_builtin)
+    resolved_border = _resolve_colors(reg, border_by, border_colors, border_builtin, border=True)
+
     edge_colors_hex = {**DEFAULT_EDGE_COLORS, **(kwargs.get('edge_colors') or {})}
     node_size_val = kwargs.get('node_size', 28)
     font_size_val = kwargs.get('font_size', 8)
@@ -590,19 +904,24 @@ def save_static_png(stmts, reg, G=None, output='interaction_network.png',
     background_color = kwargs.get('background_color', '#FFFFFF')
 
     # Build RGBA dicts from hex colours
-    rgba_node = {}
-    for chrom, hex_c in chrom_colors_hex.items():
-        rgba_node[chrom] = _hex_to_rgba(hex_c)
+    rgba_fill = {val: _hex_to_rgba(hx) for val, hx in resolved_fill.items()}
+    rgba_border = {val: _hex_to_rgba(hx) for val, hx in resolved_border.items()}
+    rgba_edge = {st: _hex_to_rgba(hx, alpha=0.8) for st, hx in edge_colors_hex.items()}
 
-    rgba_edge = {}
-    for stype, hex_c in edge_colors_hex.items():
-        rgba_edge[stype] = _hex_to_rgba(hex_c, alpha=0.8)
-
-    # Vertex fill colour from chromosome
+    # Vertex fill colour
     vfill = G.new_vertex_property('vector<double>')
     for v in G.vertices():
-        chrom = G.vp['chromosome'][v]
-        vfill[v] = rgba_node.get(chrom, rgba_node.get('unknown', DEFAULT_RGBA_NODE['unknown']))
+        name = G.vp['name'][v]
+        fill_vals = _resolve_field(name, reg, fill_by)
+        val = fill_vals[0]
+        vfill[v] = rgba_fill.get(val, rgba_fill.get('unknown', DEFAULT_RGBA_NODE['unknown']))
+
+    # Vertex border (outline) colour
+    vcolor = G.new_vertex_property('vector<double>')
+    for v in G.vertices():
+        name = G.vp['name'][v]
+        val = _resolve_border_field(name, reg, border_by)
+        vcolor[v] = rgba_border.get(val, [0.2, 0.2, 0.2, 0.6])
 
     # Edge colour and dash
     ecolor = G.new_edge_property('vector<double>')
@@ -618,7 +937,7 @@ def save_static_png(stmts, reg, G=None, output='interaction_network.png',
     gt.graph_draw(
         G, pos=pos,
         vertex_fill_color=vfill,
-        vertex_color=[0.2, 0.2, 0.2, 0.6],
+        vertex_color=vcolor,
         vertex_size=node_size_val,
         vertex_text=G.vp['name'],
         vertex_text_color=[1, 1, 1, 1],
