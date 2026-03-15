@@ -431,11 +431,14 @@ def build_graph(stmts, genes=None, *, reg=None, mode='all', singletons=False):
 
 def _cytoscape_json(G, reg, edge_evidence,
                     fill_by, border_by, fill_colors, border_colors,
-                    fill_multi):
+                    fill_multi, pos=None):
     """Convert graph-tool Graph to {nodes, edges} dict for ipycytoscape.
 
     When *fill_multi* is True, fill is rendered via pie SVG background images
     and each node gets a 'bg_image' data field.
+
+    When *pos* is provided (dict of ``{name: {'x': float, 'y': float}}``),
+    each node entry gets a ``'position'`` key for use with ``layout='preset'``.
     """
     nodes = []
     edges = []
@@ -465,7 +468,10 @@ def _cytoscape_json(G, reg, edge_evidence,
         else:
             data['fill_val'] = fill_vals[0]
 
-        nodes.append({'data': data})
+        node_entry = {'data': data}
+        if pos is not None and name in pos:
+            node_entry['position'] = pos[name]
+        nodes.append(node_entry)
 
     for e in G.edges():
         src = G.vp['name'][e.source()]
@@ -729,11 +735,14 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
     singletons : bool
         If True and *genes* is given, include genes with no within-group
         interactions as isolated nodes (default False).
-    layout : graph_tool.VertexPropertyMap or str, optional
-        Node positions. Pass a graph-tool layout result
-        (e.g. ``gt.arf_layout(G)``) to use those positions instead of
-        cytoscape's built-in cose layout. Also accepts a cytoscape.js
-        layout name as a string (e.g. ``'circle'``, ``'grid'``).
+    layout : str or graph_tool.VertexPropertyMap, optional
+        Cytoscape.js layout name (default ``'cose'``) or a graph-tool
+        VertexPropertyMap from a layout function (e.g.
+        ``gt.arf_layout(G)``). When a VertexPropertyMap is passed, its
+        graph is used directly and coordinates are scaled to pixel-space
+        with ``layout='preset'``.
+        Common string options: ``'cose'``, ``'circle'``, ``'grid'``,
+        ``'breadthfirst'``, ``'concentric'``, ``'random'``.
 
     Style kwargs (all optional)
     ---------------------------
@@ -797,16 +806,28 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
     font_weight = kwargs.get('font_weight', 'bold')
     text_outline = kwargs.get('text_outline', True)
 
-    edge_evidence = _build_edge_evidence(stmts)
-
-    # Resolve layout: graph-tool VertexPropertyMap → positions for preset layout
-    _gt_pos = None
+    # Detect graph-tool VertexPropertyMap layout
+    _pos_dict = None
     if layout is not None and not isinstance(layout, str):
-        _gt_pos = layout  # assume graph-tool VertexPropertyMap
+        import numpy as np
+        vpm = layout
+        G = vpm.get_graph()
+        coords = np.array([[vpm[v][0], vpm[v][1]] for v in G.vertices()])
+        mins, maxs = coords.min(0), coords.max(0)
+        span = maxs - mins
+        span[span == 0] = 1
+        scaled = 50 + (coords - mins) / span * np.array([700, 500])
+        _pos_dict = {
+            G.vp['name'][v]: {'x': float(scaled[int(v)][0]),
+                              'y': float(scaled[int(v)][1])}
+            for v in G.vertices()
+        }
+
+    edge_evidence = _build_edge_evidence(stmts)
     cyto_json = _cytoscape_json(G, reg, edge_evidence,
                                 fill_by, border_by,
                                 resolved_fill, resolved_border,
-                                fill_multi)
+                                fill_multi, pos=_pos_dict)
 
     _box_style = (
         'padding:8px; font-size:13px; color:#333; '
@@ -827,25 +848,7 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
         node_size, node_shape, font_size, border_width, edge_width,
         text_color, font_weight, text_outline, fill_multi,
     ))
-    if _gt_pos is not None:
-        # Scale graph-tool positions to pixel-space and apply to nodes
-        import numpy as np
-        coords = np.array([_gt_pos[v] for v in G.vertices()])
-        if len(coords) > 0:
-            mins = coords.min(axis=0)
-            maxs = coords.max(axis=0)
-            span = maxs - mins
-            span[span == 0] = 1
-            # Scale to 800x600 canvas with 50px margin
-            scaled = 50 + (coords - mins) / span * np.array([700, 500])
-        name_to_pos = {}
-        for v in G.vertices():
-            idx = int(v)
-            name_to_pos[G.vp['name'][v]] = (float(scaled[idx][0]), float(scaled[idx][1]))
-        for node in cyto.graph.nodes:
-            p = name_to_pos.get(node.data['id'])
-            if p:
-                node.position = {'x': p[0], 'y': p[1]}
+    if _pos_dict is not None:
         cyto.set_layout(name='preset', animate=False)
     elif isinstance(layout, str):
         cyto.set_layout(name=layout, animate=False)
