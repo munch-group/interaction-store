@@ -56,7 +56,7 @@ def load_store(path: str):
 
 def save_store(stmts, path: str):
     """Serialise statement list to JSON file (atomic write)."""
-    _atomic_json_write(path, stmts_to_json(stmts))
+    _atomic_json_write(pathlib.Path(path), stmts_to_json(stmts))
     print(f'Saved {len(stmts)} statements → {path}')
 
 

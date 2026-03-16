@@ -46,6 +46,7 @@ from contextlib import redirect_stderr
 import io
 import math
 import base64
+import graph_tool.all as gt
 
 # ── default colour / style constants ─────────────────────────────────────────
 
@@ -363,7 +364,7 @@ def _build_edge_evidence(stmts):
     return edge_evidence
 
 
-def build_graph(stmts, genes=None, *, reg=None, mode='all', singletons=False):
+def build_graph(stmts, genes=None, reg=None, mode='any', singletons=False):
     """Build a graph-tool directed Graph from INDRA statements + registry.
 
     Parameters
@@ -809,7 +810,8 @@ def _inject_semantic_zoom(cyto, base_style, node_size, font_size,
 
 # ── public API ───────────────────────────────────────────────────────────────
 
-def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
+def interactive_network(stmts, reg=None, genes=None, G=None, mode='any',
+                        highlight=None,
                         fill_by='chromosome', border_by='groups',
                         fill_colors=None, border_colors=None,
                         chromosome_colors=None, group_colors=None,
@@ -824,14 +826,17 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
     ----------
     stmts : list[Statement]
         INDRA statements (used for edge evidence text).
-    reg : dict
+    reg : dict, optional
         Gene registry (gene_name -> attributes).
+    genes : list[str], optional
+        Restrict graph to statements involving these genes.
+    mode : {'all', 'any'}
+        'all' keeps only edges where **every** agent is in *genes* (within-group).
+        'any' keeps edges where **at least one** agent is in *genes* (includes interactors outside the gene set).
     G : graph_tool.Graph, optional
         Pre-built graph. If None, built from stmts + reg.
     highlight : str, optional
         Gene name to highlight (not yet implemented in interactive view).
-    genes : list[str], optional
-        Restrict graph to statements involving these genes.
     fill_by : str
         Registry field for node fill colour (default 'chromosome').
         Multi-valued fields (e.g. 'groups', 'contexts') render as pie charts.
@@ -907,6 +912,9 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
     ipywidgets.VBox containing the cytoscape widget, legend button, and info box.
     If ``static=True``, returns an IPython Image display object instead.
     """
+    if reg is None:
+        from gene_registry import load_registry
+        reg = load_registry()
     if static:
         import tempfile, os
         from IPython.display import Image
@@ -943,8 +951,16 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
 
     fill_multi = _is_multi_valued(reg, fill_by)
 
-    if G is None or genes is not None:
-        G = build_graph(stmts, genes=genes, reg=reg, singletons=singletons)
+    # if layout is not None and not isinstance(layout, str):
+    #     if G is not None:
+    #         raise ValueError("When a VertexPropertyMap layout is provided, do not also provide a graph G; the graph is taken from the layout's .graph property.")
+    #     G = vpm.get_graph()
+    if G is None:
+        G = build_graph(stmts, genes=genes, reg=reg, mode=mode, singletons=singletons)
+ 
+    if layout is None:
+        layout = gt.sfdp_layout(G)
+        G = layout.get_graph()
 
     # Backward compat: chrom_colors → chromosome_colors, module_colors → group_colors
     if kwargs.get('chrom_colors') and chromosome_colors is None:
@@ -1008,9 +1024,7 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
     _pos_dict = None
     if layout is not None and not isinstance(layout, str):
         import numpy as np
-        vpm = layout
-        G = vpm.get_graph()
-        coords = np.array([[vpm[v][0], vpm[v][1]] for v in G.vertices()])
+        coords = np.array([[layout[v][0], layout[v][1]] for v in G.vertices()])
         mins, maxs = coords.min(0), coords.max(0)
         span = maxs - mins
         span[span == 0] = 1

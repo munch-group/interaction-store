@@ -144,21 +144,26 @@ _CONFIDENCE_LEVELS = {
 }
 
 
-def _build_query(gene: str, confidence: Optional[str]):
+def _build_query(gene: str, confidence: Optional[str],
+                 namespace: Optional[str] = None):
     """Return an INDRA DB REST query object for the given gene and confidence.
 
-    Returns None for the default (no confidence filter) — caller should use
-    the simple ``get_statements(agents=[g])`` path instead.
+    Returns None for the default (no confidence filter and no namespace) —
+    caller should use the simple ``get_statements(agents=[g])`` path instead.
     """
-    if confidence is None:
-        return None
-
     from indra.sources.indra_db_rest.query import (
         HasAgent, HasDatabases, HasEvidenceBound, Union,
     )
 
-    agent = HasAgent(gene)
-    if confidence == 'curated':
+    has_filter = confidence is not None or namespace is not None
+    if not has_filter:
+        return None
+
+    agent = HasAgent(gene, namespace=namespace) if namespace else HasAgent(gene)
+
+    if confidence is None:
+        return agent
+    elif confidence == 'curated':
         return agent & HasDatabases()
     elif confidence == 'balanced':
         return agent & Union([HasDatabases(), HasEvidenceBound(['>= 5'])])
@@ -171,14 +176,19 @@ def _build_query(gene: str, confidence: Optional[str]):
         )
 
 
-def _cache_key(gene: str, confidence: Optional[str]) -> str:
+def _cache_key(gene: str, confidence: Optional[str],
+               namespace: Optional[str] = None) -> str:
     """Return the cache key for a gene + confidence combination."""
-    if confidence is None:
-        return gene
-    return f'{gene}::{confidence}'
+    parts = [gene]
+    if confidence:
+        parts.append(confidence)
+    if namespace:
+        parts.append(f'ns={namespace}')
+    return '::'.join(parts)
 
 
-def _fetch_one(gene: str, confidence, ev_limit: int) -> list:
+def _fetch_one(gene: str, confidence, ev_limit: int,
+               namespace: Optional[str] = None) -> list:
     """Fetch statements for a single gene from the INDRA REST API.
 
     Returns a list of INDRA Statement objects (may be empty on failure).
@@ -189,7 +199,7 @@ def _fetch_one(gene: str, confidence, ev_limit: int) -> list:
     cannot be caught from Python.
     """
     import sys, io
-    query = _build_query(gene, confidence)
+    query = _build_query(gene, confidence, namespace=namespace)
     # Suppress INDRA's internal thread tracebacks on connection resets.
     _real_stderr = sys.stderr
     sys.stderr = io.StringIO()
@@ -207,6 +217,7 @@ def _fetch_one(gene: str, confidence, ev_limit: int) -> list:
 
 
 def _fetch_with_retry(gene: str, confidence, ev_limit: int,
+                      namespace: Optional[str] = None,
                       max_retries: int = 3, base_delay: float = 5.0,
                       verbose: bool = False) -> 'tuple[str, list, str|None]':
     """Fetch with exponential backoff on transient failures.
@@ -217,7 +228,7 @@ def _fetch_with_retry(gene: str, confidence, ev_limit: int,
 
     for attempt in range(max_retries):
         try:
-            stmts = _fetch_one(gene, confidence, ev_limit)
+            stmts = _fetch_one(gene, confidence, ev_limit, namespace=namespace)
             return (gene, stmts, None)
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout,
@@ -245,6 +256,7 @@ def cached_get_statements(
     verbose: bool = False,
     confidence: Optional[str] = None,
     parallel: Optional[int] = None,
+    namespace: Optional[str] = None,
 ) -> list:
     """
     Get INDRA statements for one or more genes, using cache when available.
@@ -274,6 +286,10 @@ def cached_get_statements(
           texts (no database requirement).
 
         Results are cached separately per confidence level.
+    namespace : str, optional
+        Restrict agent grounding to a specific database namespace
+        (e.g. ``'HGNC'`` for genes only, ``'CHEBI'`` for chemicals).
+        Cached separately per namespace.
     parallel : int, optional
         Number of concurrent API requests for cache misses (default None
         = sequential). Uses threads with exponential backoff on transient
@@ -293,8 +309,11 @@ def cached_get_statements(
     cached_results = {}   # gene -> stmts
     needs_fetch = []      # genes that need API calls
 
+    assert confidence in (None, 'curated', 'balanced', 'supported'), \
+        f"confidence must be one of {list(_CONFIDENCE_LEVELS)} or None, got {confidence!r}"
+
     for g in genes:
-        key = _cache_key(g, confidence)
+        key = _cache_key(g, confidence, namespace)
         entry = _get_entry(key)
         hit = False
         if entry is not None:
@@ -318,10 +337,11 @@ def cached_get_statements(
         def _do_fetch(g):
             """Fetch, cache, and return (gene, stmts, error)."""
             g, stmts, err = _fetch_with_retry(
-                g, confidence, ev_limit, max_retries=3, verbose=verbose,
+                g, confidence, ev_limit, namespace=namespace,
+                max_retries=3, verbose=verbose,
             )
             if not err:
-                key = _cache_key(g, confidence)
+                key = _cache_key(g, confidence, namespace)
                 _put_entry(key, str(date.today()), ev_limit,
                            stmts_to_json(stmts))
             return (g, stmts, err)
