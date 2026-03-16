@@ -171,17 +171,20 @@ def _is_multi_valued(reg, field):
 def _auto_colors(values, palette_name='Set2'):
     """Assign colours from a matplotlib categorical palette to distinct values.
 
-    Returns {value: '#RRGGBB'}.
+    ``'unknown'`` is always mapped to ``_GRAY`` and does not consume a
+    palette slot.  Returns {value: '#RRGGBB'}.
     """
     import matplotlib.pyplot as plt
     cmap = plt.get_cmap(palette_name)
-    sorted_vals = sorted(set(values))
+    sorted_vals = sorted(v for v in set(values) if v != 'unknown')
     n = max(len(sorted_vals), 1)
     colors = {}
     for i, val in enumerate(sorted_vals):
         rgba = cmap(i / n if n > 1 else 0.5)
         colors[val] = '#{:02x}{:02x}{:02x}'.format(
             int(rgba[0] * 255), int(rgba[1] * 255), int(rgba[2] * 255))
+    if 'unknown' in values:
+        colors['unknown'] = _GRAY
     return colors
 
 
@@ -250,17 +253,18 @@ def _resolve_colors(reg, field, user_colors, builtin_defaults, *, border=False):
             all_vals.update(_resolve_field(name, reg, field))
     all_vals.add('unknown')
 
-    has_explicit = bool(builtin_defaults) or bool(user_colors)
-    if has_explicit:
-        # Only explicitly listed values get colour; rest gray
-        colors = {v: _GRAY for v in all_vals}
-    else:
-        # No guidance at all — auto-generate a palette
-        colors = _auto_colors(all_vals)
+    # Start with auto-generated palette for all values, then layer on
+    # builtins and user overrides.  This ensures values not covered by
+    # builtins still get a distinct colour instead of falling through
+    # to gray.
+    colors = _auto_colors(all_vals)
 
-    colors.update(builtin_defaults)
+    # Only apply builtins/user colours for values actually present in the
+    # registry so that off-screen categories don't consume palette slots
+    # or leak into the legend.
+    colors.update({v: c for v, c in builtin_defaults.items() if v in all_vals})
     if user_colors:
-        colors.update(user_colors)
+        colors.update({v: c for v, c in user_colors.items() if v in all_vals})
     return colors
 
 
@@ -399,8 +403,8 @@ def build_graph(stmts, genes=None, *, reg=None, mode='all', singletons=False):
             v = G.add_vertex()
             node_idx[name] = int(v)
             G.vp['name'][v] = name
-            info = reg.get(name, {})
-            G.vp['chromosome'][v] = info.get('chromosome', 'unknown')
+            # Chromosome is filled in the bulk pass below.
+            G.vp['chromosome'][v] = 'unknown'
         return G.vertex(node_idx[name])
 
     for s in stmts:
@@ -425,6 +429,42 @@ def build_graph(stmts, genes=None, *, reg=None, mode='all', singletons=False):
     if singletons and genes is not None:
         for name in genes:
             _get_or_add(name)
+
+    # Bulk-resolve chromosomes: registry first, then geneinfo for the rest.
+    needs_lookup = []
+    for v in G.vertices():
+        name = G.vp['name'][v]
+        info = reg.get(name, {})
+        chrom = info.get('chromosome')
+        if chrom:
+            G.vp['chromosome'][v] = chrom
+        else:
+            needs_lookup.append((v, name))
+
+    if needs_lookup:
+        try:
+            from geneinfo.coords import gene_coords
+            # gene_coords returns a flat list that drops misses, so call
+            # once per gene to keep the name↔result mapping reliable.
+            for v, name in needs_lookup:
+                try:
+                    hits = gene_coords(name, 'hg38')
+                    if hits:
+                        raw = hits[0][0]  # e.g. 'chr17', 'chrX'
+                        if raw.startswith('chr'):
+                            raw = raw[3:]
+                        if raw == 'X':
+                            G.vp['chromosome'][v] = 'X'
+                        elif raw == 'Y':
+                            G.vp['chromosome'][v] = 'Y'
+                        elif raw in ('M', 'MT'):
+                            G.vp['chromosome'][v] = 'mito'
+                        else:
+                            G.vp['chromosome'][v] = 'auto'
+                except Exception:
+                    pass
+        except ImportError:
+            pass
 
     return G
 
@@ -494,7 +534,8 @@ def _cytoscape_json(G, reg, edge_evidence,
 
 def _build_style(fill_colors, border_colors, edge_colors,
                  node_size, node_shape, font_size, border_width, edge_width,
-                 text_color, font_weight, text_outline, fill_multi):
+                 arrow_scale, text_color, font_weight, text_outline,
+                 text_outline_width, fill_multi):
     """Return the CSS selector list for ipycytoscape."""
     node_style = {
         'label': 'data(label)',
@@ -516,7 +557,7 @@ def _build_style(fill_colors, border_colors, edge_colors,
         node_style['background-color'] = '#DADDE1'
     if text_outline:
         node_style['text-outline-color'] = '#333'
-        node_style['text-outline-width'] = 1
+        node_style['text-outline-width'] = text_outline_width
     else:
         node_style['text-outline-width'] = 0
 
@@ -550,7 +591,7 @@ def _build_style(fill_colors, border_colors, edge_colors,
              'target-arrow-color': '#AAAAAA',
              'line-color': '#AAAAAA',
              'width': edge_width,
-             'arrow-scale': 1.2,
+             'arrow-scale': arrow_scale,
          }},
         # Activation — green arrow
         {'selector': '.Activation, .IncreaseAmount',
@@ -597,7 +638,7 @@ def _build_style(fill_colors, border_colors, edge_colors,
 
 
 def _build_legend_html(fill_by, border_by, fill_colors, border_colors,
-                       edge_colors, fill_multi):
+                       edge_colors, fill_multi, visible_edge_types=None):
     """Build an HTML legend string for the info box."""
     swatch = (
         '<span style="display:inline-block; width:14px; height:14px; '
@@ -633,11 +674,13 @@ def _build_legend_html(fill_by, border_by, fill_colors, border_colors,
     for val in sorted(border_colors):
         parts.append(swatch.format(color='#ccc', border=border_colors[val]) + f'{val}<br>')
 
-    # Edges
+    # Edges — only show types present in the graph
     parts.append('<br><b>Edges \u2014 Interaction type</b><br>')
     seen = set()
     for stype in ['Activation', 'Inhibition', 'Phosphorylation',
                    'IncreaseAmount', 'DecreaseAmount', 'Complex']:
+        if visible_edge_types is not None and stype not in visible_edge_types:
+            continue
         color = edge_colors.get(stype, '#AAAAAA')
         dash = 'dashed' if stype == 'Complex' else 'solid'
         arrow = arrow_label.get(stype, 'triangle')
@@ -690,6 +733,68 @@ def _make_click_handlers(info_box, legend_html):
     return on_node_click, on_edge_click, on_legend_click
 
 
+def _inject_semantic_zoom(cyto, base_style, node_size, font_size,
+                          border_width, edge_width):
+    """Observe the widget's synced ``zoom`` trait and re-apply the stylesheet
+    with sizes scaled inversely, so visual sizes stay constant on screen
+    while the layout spacing changes.
+
+    Uses ipycytoscape's ``zoom`` trait (synced from browser via comms) and
+    ``set_style()`` — no raw JS injection needed.
+    """
+    import copy
+
+    if isinstance(font_size, str):
+        fs = int(''.join(c for c in font_size if c.isdigit()) or '10')
+    else:
+        fs = int(font_size)
+
+    # Snapshot the initial zoom so the first render is unchanged.
+    state = {'z0': None}
+
+    def _on_zoom(change):
+        z = change['new']
+        if z is None or z <= 0:
+            return
+        # Capture initial zoom on first callback (layout must settle first).
+        if state['z0'] is None:
+            state['z0'] = z
+            return
+        scale = state['z0'] / z
+
+        new_style = copy.deepcopy(base_style)
+        for rule in new_style:
+            sel = rule.get('selector', '')
+            s = rule.get('style', rule.get('css', {}))
+
+            # Scale node dimensions
+            for key in ('width', 'height'):
+                if key in s and isinstance(s[key], (int, float)):
+                    s[key] = s[key] * scale
+            if 'font-size' in s:
+                raw = s['font-size']
+                if isinstance(raw, (int, float)):
+                    s['font-size'] = f'{raw * scale:.1f}px'
+                elif isinstance(raw, str):
+                    num = float(''.join(c for c in raw if c.isdigit() or c == '.') or '10')
+                    s['font-size'] = f'{num * scale:.1f}px'
+            if 'border-width' in s and isinstance(s['border-width'], (int, float)):
+                s['border-width'] = s['border-width'] * scale
+            # Scale edge width only on edge selectors
+            if sel.startswith('edge'):
+                if 'width' in s and isinstance(s['width'], (int, float)):
+                    s['width'] = s['width'] * scale
+            if 'arrow-scale' in s and isinstance(s['arrow-scale'], (int, float)):
+                s['arrow-scale'] = s['arrow-scale'] * scale
+            if 'text-outline-width' in s and isinstance(s['text-outline-width'], (int, float)):
+                if s['text-outline-width'] > 0:
+                    s['text-outline-width'] = s['text-outline-width'] * scale
+
+        cyto.set_style(new_style)
+
+    cyto.observe(_on_zoom, names=['zoom'])
+
+
 # ── public API ───────────────────────────────────────────────────────────────
 
 def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
@@ -697,7 +802,8 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
                         fill_colors=None, border_colors=None,
                         chromosome_colors=None, group_colors=None,
                         context_colors=None, singletons=False,
-                        layout=None, **kwargs):
+                        fill_subset=None, border_subset=None,
+                        layout=None, semantic_zoom=False, scale=1.0, **kwargs):
     """
     Build an interactive ipycytoscape widget with click-to-inspect info box.
 
@@ -735,6 +841,19 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
     singletons : bool
         If True and *genes* is given, include genes with no within-group
         interactions as isolated nodes (default False).
+    fill_subset : list[str], optional
+        Only colour nodes whose fill_by value is in this list; all others
+        get the default gray. Unmatched values are also excluded from the
+        legend.
+    border_subset : list[str], optional
+        Only colour nodes whose border_by value is in this list; all others
+        get the default gray. Unmatched values are also excluded from the
+        legend.
+    semantic_zoom : bool
+        If True, node sizes, label sizes, border widths, and edge widths
+        stay constant on screen when zooming — only the layout spacing
+        changes. Implemented via a JavaScript zoom listener that adjusts
+        Cytoscape.js styles inversely to the zoom level (default False).
     layout : str or graph_tool.VertexPropertyMap, optional
         Cytoscape.js layout name (default ``'cose'``) or a graph-tool
         VertexPropertyMap from a layout function (e.g.
@@ -743,6 +862,10 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
         with ``layout='preset'``.
         Common string options: ``'cose'``, ``'circle'``, ``'grid'``,
         ``'breadthfirst'``, ``'concentric'``, ``'random'``.
+    scale : float
+        Uniform scale factor applied to the defaults of node_size, font_size,
+        border_width, edge_width, arrow_scale, and text_outline_width
+        (default 1.0). Explicit style kwargs override the scaled defaults.
 
     Style kwargs (all optional)
     ---------------------------
@@ -757,6 +880,7 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
     text_outline     : bool — dark outline around labels (default True)
     border_width     : int  — node border width (default 2)
     edge_width       : int  — edge line width (default 2)
+    arrow_scale      : float — arrowhead scale factor (default 1.2)
     background_color : str  — canvas background (default 'transparent')
 
     Returns
@@ -787,24 +911,57 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
     if kwargs.get('module_colors') and group_colors is None:
         group_colors = kwargs['module_colors']
 
+    # Restrict registry to nodes actually in the graph so colour maps,
+    # auto-palettes, and the legend only reflect what is on screen.
+    # For genes not in the registry, create synthetic entries using the
+    # chromosome already resolved on the graph vertex (via geneinfo).
+    visible_reg = {}
+    for v in G.vertices():
+        name = G.vp['name'][v]
+        if name in reg:
+            visible_reg[name] = reg[name]
+        else:
+            visible_reg[name] = {'chromosome': G.vp['chromosome'][v]}
+
     # Resolve colour mappings — field-specific dicts are layered into builtins
     _fc = dict(chromosome_colors=chromosome_colors, group_colors=group_colors,
                context_colors=context_colors)
     fill_builtin = _builtin_for_field(fill_by, **_fc)
     border_builtin = _builtin_for_field(border_by, **_fc)
-    resolved_fill = _resolve_colors(reg, fill_by, fill_colors, fill_builtin)
-    resolved_border = _resolve_colors(reg, border_by, border_colors, border_builtin, border=True)
+    resolved_fill = _resolve_colors(visible_reg, fill_by, fill_colors, fill_builtin)
+    resolved_border = _resolve_colors(visible_reg, border_by, border_colors, border_builtin, border=True)
+
+    # Restrict to user-specified subsets: values outside the subset are
+    # forced to gray so only the listed categories get colour / legend entries.
+    # Values in the subset that lack an explicit colour get auto-assigned one.
+    _fill_hidden = set()
+    _border_hidden = set()
+    if fill_subset is not None:
+        _keep = set(fill_subset) | {'unknown'}
+        _fill_hidden = {v for v in resolved_fill if v not in _keep}
+        resolved_fill = {v: (c if v in _keep else _GRAY)
+                         for v, c in resolved_fill.items()}
+    if border_subset is not None:
+        _keep = set(border_subset) | {'unknown'}
+        _border_hidden = {v for v in resolved_border if v not in _keep}
+        resolved_border = {v: (c if v in _keep else _GRAY)
+                           for v, c in resolved_border.items()}
 
     edge_colors_resolved = {**DEFAULT_EDGE_COLORS, **(kwargs.get('edge_colors') or {})}
-    node_size = kwargs.get('node_size', 45)
+    node_size = kwargs.get('node_size', 45) * scale
     node_shape = kwargs.get('node_shape', 'ellipse')
-    font_size = kwargs.get('font_size', '10px')
-    border_width = kwargs.get('border_width', 2)
-    edge_width = kwargs.get('edge_width', 2)
+    _fs_raw = kwargs.get('font_size', 10)
+    if isinstance(_fs_raw, str):
+        _fs_raw = float(''.join(c for c in _fs_raw if c.isdigit() or c == '.') or '10')
+    font_size = f'{_fs_raw * scale:.1f}px'
+    border_width = kwargs.get('border_width', 2) * scale
+    edge_width = kwargs.get('edge_width', 2) * scale
+    arrow_scale = kwargs.get('arrow_scale', 1.2) * scale
     background_color = kwargs.get('background_color', 'transparent')
     text_color = kwargs.get('text_color', 'white')
     font_weight = kwargs.get('font_weight', 'bold')
     text_outline = kwargs.get('text_outline', True)
+    text_outline_width = kwargs.get('text_outline_width', 1) * scale
 
     # Detect graph-tool VertexPropertyMap layout
     _pos_dict = None
@@ -824,30 +981,41 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
         }
 
     edge_evidence = _build_edge_evidence(stmts)
-    cyto_json = _cytoscape_json(G, reg, edge_evidence,
+    cyto_json = _cytoscape_json(G, visible_reg, edge_evidence,
                                 fill_by, border_by,
                                 resolved_fill, resolved_border,
                                 fill_multi, pos=_pos_dict)
+
+    # Collect edge types actually present in the graph for legend filtering.
+    visible_edge_types = {G.ep['stmt_type'][e] for e in G.edges()}
 
     _box_style = (
         'padding:8px; font-size:13px; color:#333; '
         'background:#f8f8f8; border:1px solid #ddd; border-radius:4px; '
         'min-height:40px; font-family:monospace; white-space:pre-wrap;'
     )
+    # For the legend, exclude values hidden by subset filters and 'unknown'.
+    legend_fill = {v: c for v, c in resolved_fill.items()
+                   if v not in _fill_hidden and v != 'unknown'}
+    legend_border = {v: c for v, c in resolved_border.items()
+                     if v not in _border_hidden and v != 'unknown'}
     legend_html = _build_legend_html(fill_by, border_by,
-                                     resolved_fill, resolved_border,
-                                     edge_colors_resolved, fill_multi)
+                                     legend_fill, legend_border,
+                                     edge_colors_resolved, fill_multi,
+                                     visible_edge_types)
     info_box = widgets.HTML(
         value=f'<div style="{_box_style}">Click a node or edge for details, or press Show Legend.</div>',
     )
 
     cyto = ipycytoscape.CytoscapeWidget()
     cyto.graph.add_graph_from_json(cyto_json, directed=True)
-    cyto.set_style(_build_style(
+    base_style = _build_style(
         resolved_fill, resolved_border, edge_colors_resolved,
         node_size, node_shape, font_size, border_width, edge_width,
-        text_color, font_weight, text_outline, fill_multi,
-    ))
+        arrow_scale, text_color, font_weight, text_outline,
+        text_outline_width, fill_multi,
+    )
+    cyto.set_style(base_style)
     if _pos_dict is not None:
         cyto.set_layout(name='preset', animate=False)
     elif isinstance(layout, str):
@@ -882,7 +1050,13 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
     )
     legend_btn.on_click(on_legend_click)
 
-    return widgets.VBox([cyto, legend_btn, info_box])
+    box = widgets.VBox([cyto, legend_btn, info_box])
+
+    if semantic_zoom:
+        _inject_semantic_zoom(cyto, base_style, node_size, font_size,
+                              border_width, edge_width)
+
+    return box
 
 
 def save_static_png(stmts, reg, G=None, output='interaction_network.png',
@@ -972,13 +1146,23 @@ def save_static_png(stmts, reg, G=None, output='interaction_network.png',
     if kwargs.get('module_colors') and group_colors is None:
         group_colors = kwargs['module_colors']
 
+    # Restrict registry to nodes actually in the graph so colour maps
+    # and the legend only reflect what is on screen.
+    visible_reg = {}
+    for v in G.vertices():
+        name = G.vp['name'][v]
+        if name in reg:
+            visible_reg[name] = reg[name]
+        else:
+            visible_reg[name] = {'chromosome': G.vp['chromosome'][v]}
+
     # Resolve colour mappings — field-specific dicts are layered into builtins
     _fc = dict(chromosome_colors=chromosome_colors, group_colors=group_colors,
                context_colors=context_colors)
     fill_builtin = _builtin_for_field(fill_by, **_fc)
     border_builtin = _builtin_for_field(border_by, **_fc)
-    resolved_fill = _resolve_colors(reg, fill_by, fill_colors, fill_builtin)
-    resolved_border = _resolve_colors(reg, border_by, border_colors, border_builtin, border=True)
+    resolved_fill = _resolve_colors(visible_reg, fill_by, fill_colors, fill_builtin)
+    resolved_border = _resolve_colors(visible_reg, border_by, border_colors, border_builtin, border=True)
 
     edge_colors_hex = {**DEFAULT_EDGE_COLORS, **(kwargs.get('edge_colors') or {})}
     node_size_val = kwargs.get('node_size', 28)
