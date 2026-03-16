@@ -42,6 +42,8 @@ background_color : str   — canvas/background colour (default 'transparent');
                    for static PNG default is '#FFFFFF'
 """
 
+from contextlib import redirect_stderr
+import io
 import math
 import base64
 
@@ -442,15 +444,25 @@ def build_graph(stmts, genes=None, *, reg=None, mode='all', singletons=False):
             needs_lookup.append((v, name))
 
     if needs_lookup:
+
         try:
             from geneinfo.coords import gene_coords
+            unique_names = list(set([name for _, name in needs_lookup]))
+            with redirect_stderr(io.StringIO()) as f:
+                coords = gene_coords(unique_names, 'hg38')
+            s = f.getvalue()
+            # if s:
+            #     print('Not all gene coordinates could be resolved')
+            coords = {name: (chrom, start, end) for chrom, start, end, name in coords}
+
             # gene_coords returns a flat list that drops misses, so call
             # once per gene to keep the name↔result mapping reliable.
             for v, name in needs_lookup:
                 try:
-                    hits = gene_coords(name, 'hg38')
-                    if hits:
-                        raw = hits[0][0]  # e.g. 'chr17', 'chrX'
+                    # hits = gene_coords(name, 'hg38')
+                    # if hits:
+                    if name in coords:
+                        raw = coords[name][0]  # e.g. 'chr17', 'chrX'
                         if raw.startswith('chr'):
                             raw = raw[3:]
                         if raw == 'X':
@@ -803,7 +815,8 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
                         chromosome_colors=None, group_colors=None,
                         context_colors=None, singletons=False,
                         fill_subset=None, border_subset=None,
-                        layout=None, semantic_zoom=False, scale=1.0, **kwargs):
+                        layout=None, semantic_zoom=False, scale=1.0,
+                        static=False, static_size=(1800, 1300), **kwargs):
     """
     Build an interactive ipycytoscape widget with click-to-inspect info box.
 
@@ -866,6 +879,12 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
         Uniform scale factor applied to the defaults of node_size, font_size,
         border_width, edge_width, arrow_scale, and text_outline_width
         (default 1.0). Explicit style kwargs override the scaled defaults.
+    static : bool
+        If True, render a static PNG via graph-tool (``save_static_png``)
+        and display it inline instead of building the interactive widget
+        (default False).
+    static_size : tuple[int, int]
+        Image dimensions for static rendering (default (1800, 1300)).
 
     Style kwargs (all optional)
     ---------------------------
@@ -886,7 +905,29 @@ def interactive_network(stmts, reg, G=None, highlight=None, genes=None,
     Returns
     -------
     ipywidgets.VBox containing the cytoscape widget, legend button, and info box.
+    If ``static=True``, returns an IPython Image display object instead.
     """
+    if static:
+        import tempfile, os
+        from IPython.display import Image
+
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+            tmp_path = tmp.name
+        try:
+            save_static_png(
+                stmts, reg, G=G, output=tmp_path, size=static_size,
+                genes=genes, fill_by=fill_by, border_by=border_by,
+                fill_colors=fill_colors, border_colors=border_colors,
+                chromosome_colors=chromosome_colors, group_colors=group_colors,
+                context_colors=context_colors, singletons=singletons, **kwargs,
+            )
+            with open(tmp_path, 'rb') as f:
+                png_bytes = f.read()
+        finally:
+            os.unlink(tmp_path)
+        # Embed raw bytes so the image persists in saved notebooks.
+        return Image(data=png_bytes, format='png')
+
     import ipycytoscape
     import ipywidgets as widgets
     from IPython.display import display, HTML as DisplayHTML
@@ -1261,7 +1302,20 @@ def register_shifted_cmap(cmap_name, n_lines=24):
         pass
     return name_shifted
 
-def circos_plot(stmts, reg, cmap=None, scalings={}, assembly='hg38',
+try:
+    matplotlib.colormaps.register(
+        cmap=LinearSegmentedColormap.from_list('black', ['#000000', '#000000'])
+    )
+except ValueError:
+    # already registered, ignore
+    pass
+try:
+    register_shifted_cmap('hsv')
+except ValueError:
+    # already registered, ignore
+    pass
+
+def circos_plot(stmts, reg, cmap='shifted_hsv', scalings={}, assembly='hg38',
         ideogram_base = 97, ideogram_height = 3, figsize = (8, 8)):
 
     ColorCycler.set_cmap(cmap)

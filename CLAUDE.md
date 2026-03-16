@@ -659,7 +659,7 @@ project/
 ├── visualization.py            ← interactive (ipycytoscape) + static (graph-tool) graphs
 ├── utils.py                    ← notebook-specific: graph-tool traversal, circos plot
 ├── statements.json             ← INDRA statement store (auto-managed)
-├── genes.json                  ← gene attribute registry (auto-managed)
+├── agents.json                  ← gene attribute registry (auto-managed)
 ├── indra_db_cache.db           ← per-gene INDRA DB query cache, SQLite (auto-managed)
 ├── interaction_store.ipynb     ← exploratory analysis notebook
 ├── interaction_network.png     ← rendered graph (regenerated on demand)

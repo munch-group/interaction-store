@@ -80,7 +80,7 @@ project/
 ├── utils.py                     Notebook-specific: graph-tool traversal, circos plot
 │
 ├── statements.json              INDRA statement store  ← auto-managed, commit this
-├── genes.json                   Gene attribute registry ← auto-managed, commit this
+├── agents.json                   Gene attribute registry ← auto-managed, commit this
 ├── indra_db_cache.json          Per-gene INDRA DB query cache (auto-managed)
 ├── pending_extraction.json      Transient — NL extraction staging (do not commit)
 │
@@ -98,7 +98,7 @@ project/
         └── extract-from-text.md /is-extract-from-text
 ```
 
-The two JSON files (`statements.json`, `genes.json`) are the
+The two JSON files (`statements.json`, `agents.json`) are the
 persistent artefacts. Everything else is tooling around them.
 **Both should be committed to version control** — they are the growing
 record of the network.
@@ -192,7 +192,7 @@ Loaded and saved by the store helpers in both `mcp_server.py` and
 
 ### Gene registry
 
-`genes.json` — a JSON object mapping gene name → attribute dict.
+`agents.json` — a JSON object mapping gene name → attribute dict.
 Carries gene-level metadata that does not fit into INDRA's data model:
 chromosome, group membership, analysis provenance, rescue logic,
 expression context, haplogroup effects, and literature references.
@@ -579,7 +579,7 @@ save_store(stmts)
 ## 9. The gene registry
 
 The registry is a JSON object mapping gene name → attribute dict,
-stored in `genes.json`. It is intentionally separate from the
+stored in `agents.json`. It is intentionally separate from the
 statement store so that gene-level metadata can be queried and updated
 independently of the interaction graph.
 
@@ -1527,7 +1527,7 @@ parameter of the `ev()` wrapper.
 
 ### 17.2 Rescue logic values
 
-Used in `genes.json['rescue_logic']`.
+Used in `agents.json['rescue_logic']`.
 
 | Value | Meaning |
 |---|---|
@@ -1538,7 +1538,7 @@ Used in `genes.json['rescue_logic']`.
 
 ### 17.3 Analysis source values
 
-Used in `genes.json['analysis_origin']['source']`.
+Used in `agents.json['analysis_origin']['source']`.
 
 | Value | Meaning |
 |---|---|

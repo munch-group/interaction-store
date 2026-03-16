@@ -137,12 +137,103 @@ def cache_age_days(gene: str) -> Optional[int]:
     return (date.today() - fetched).days
 
 
+_CONFIDENCE_LEVELS = {
+    'curated':  'Database-curated interactions only (Signor, BioGRID, Reactome, etc.)',
+    'balanced': 'Database-curated OR NLP-extracted with >= 5 independent evidence texts',
+    'supported': 'NLP-extracted with >= 5 independent evidence texts',
+}
+
+
+def _build_query(gene: str, confidence: Optional[str]):
+    """Return an INDRA DB REST query object for the given gene and confidence.
+
+    Returns None for the default (no confidence filter) — caller should use
+    the simple ``get_statements(agents=[g])`` path instead.
+    """
+    if confidence is None:
+        return None
+
+    from indra.sources.indra_db_rest.query import (
+        HasAgent, HasDatabases, HasEvidenceBound, Union,
+    )
+
+    agent = HasAgent(gene)
+    if confidence == 'curated':
+        return agent & HasDatabases()
+    elif confidence == 'balanced':
+        return agent & Union([HasDatabases(), HasEvidenceBound(['>= 5'])])
+    elif confidence == 'supported':
+        return agent & HasEvidenceBound(['>= 5'])
+    else:
+        raise ValueError(
+            f"confidence must be one of {list(_CONFIDENCE_LEVELS)} or None, "
+            f"got {confidence!r}"
+        )
+
+
+def _cache_key(gene: str, confidence: Optional[str]) -> str:
+    """Return the cache key for a gene + confidence combination."""
+    if confidence is None:
+        return gene
+    return f'{gene}::{confidence}'
+
+
+def _fetch_one(gene: str, confidence, ev_limit: int) -> list:
+    """Fetch statements for a single gene from the INDRA REST API.
+
+    Returns a list of INDRA Statement objects (may be empty on failure).
+    Raises on network/API errors so the caller can handle retries.
+    """
+    query = _build_query(gene, confidence)
+    if query is None:
+        from indra.sources.indra_db_rest import get_statements
+        proc = get_statements(agents=[gene], ev_limit=ev_limit)
+        return proc.statements
+    else:
+        from indra.sources.indra_db_rest.api import get_statements_from_query
+        proc = get_statements_from_query(query, ev_limit=ev_limit)
+        return proc.statements if hasattr(proc, 'statements') else proc
+
+
+def _fetch_with_retry(gene: str, confidence, ev_limit: int,
+                      max_retries: int = 3, base_delay: float = 5.0,
+                      verbose: bool = False) -> 'tuple[str, list, str|None]':
+    """Fetch with exponential backoff on transient failures.
+
+    Returns (gene, statements, error_msg_or_None).
+    """
+    import requests
+
+    for attempt in range(max_retries):
+        try:
+            stmts = _fetch_one(gene, confidence, ev_limit)
+            return (gene, stmts, None)
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.HTTPError,
+                ConnectionResetError,
+                OSError) as e:
+            # Transient network / rate-limit error — back off and retry
+            delay = base_delay * (2 ** attempt)
+            if verbose:
+                print(f'  {gene}: attempt {attempt+1}/{max_retries} failed '
+                      f'({type(e).__name__}), retrying in {delay:.0f}s...')
+            time.sleep(delay)
+        except Exception as e:
+            # Non-transient error — don't retry
+            return (gene, [], str(e))
+
+    return (gene, [], f'Failed after {max_retries} retries')
+
+
 def cached_get_statements(
     gene: 'str | list[str]',
     ev_limit: int = 5,
     max_age_days: Optional[int] = None,
     sleep_between: float = 1.0,
     verbose: bool = False,
+    confidence: Optional[str] = None,
+    parallel: Optional[int] = None,
 ) -> list:
     """
     Get INDRA statements for one or more genes, using cache when available.
@@ -157,9 +248,27 @@ def cached_get_statements(
         If set, re-query if cached result is older than this many days.
         If None, cached results never expire (delete manually to refresh).
     sleep_between : float
-        Seconds to sleep between API calls (only for multi-gene queries).
+        Seconds to sleep between API calls (only for sequential queries).
     verbose : bool
         Print progress per gene.
+    confidence : str, optional
+        Filter by confidence level. Options:
+
+        - ``None`` (default): no filter, return all statements.
+        - ``'curated'``: database-curated interactions only (Signor,
+          BioGRID, Reactome, PhosphoSitePlus, etc.).
+        - ``'balanced'``: database-curated OR NLP-extracted with >= 5
+          independent evidence texts.
+        - ``'supported'``: NLP-extracted with >= 5 independent evidence
+          texts (no database requirement).
+
+        Results are cached separately per confidence level.
+    parallel : int, optional
+        Number of concurrent API requests for cache misses (default None
+        = sequential). Uses threads with exponential backoff on transient
+        failures (connection resets, timeouts, HTTP 429/503). Recommended
+        value: 3-4. If the API throttles connections, concurrency is
+        automatically reduced to 1 for remaining genes.
 
     Returns
     -------
@@ -168,47 +277,111 @@ def cached_get_statements(
     from indra.statements import stmts_from_json, stmts_to_json
 
     genes = [gene] if isinstance(gene, str) else list(gene)
-    all_stmts = []
-    n_cached = 0
 
-    for g in tqdm(genes):
-        entry = _get_entry(g)
+    # Split into cache hits and misses
+    cached_results = {}   # gene -> stmts
+    needs_fetch = []      # genes that need API calls
 
-        # Check cache hit
+    for g in genes:
+        key = _cache_key(g, confidence)
+        entry = _get_entry(key)
         hit = False
         if entry is not None:
             expired = False
             if max_age_days is not None:
-                age = cache_age_days(g)
+                age = cache_age_days(key)
                 expired = age is not None and age > max_age_days
             if not expired:
                 hit = True
-
         if hit:
-            stmts = stmts_from_json(entry['statements'])
-            n_cached += 1
+            cached_results[g] = stmts_from_json(entry['statements'])
             if verbose:
-                print(f'  {g}: {len(stmts)} statements (cached)')
+                print(f'  {g}: {len(cached_results[g])} statements (cached)')
         else:
-            try:
-                from indra.sources.indra_db_rest import get_statements
-                proc = get_statements(agents=[g], ev_limit=ev_limit)
-                stmts = proc.statements
-                _put_entry(g, str(date.today()), ev_limit, stmts_to_json(stmts))
-                n_cached += 1
+            needs_fetch.append(g)
+
+    # Fetch cache misses
+    fetched_results = {}  # gene -> stmts
+
+    if needs_fetch and parallel and parallel > 1:
+        # -- Parallel path with adaptive concurrency --
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        concurrency = min(parallel, len(needs_fetch))
+        remaining = list(needs_fetch)
+        consecutive_failures = 0
+
+        
+
+        while remaining:
+            batch = remaining[:concurrency]
+            remaining = remaining[len(batch):]
+            batch_failures = []
+
+            with ThreadPoolExecutor(max_workers=len(batch)) as pool:
+                futures = {
+                    pool.submit(
+                        _fetch_with_retry, g, confidence, ev_limit,
+                        max_retries=3, verbose=verbose,
+                    ): g
+                    for g in batch
+                }
+                for future in as_completed(futures):
+                    g, stmts, err = future.result()
+                    if err:
+                        if verbose:
+                            print(f'  {g}: FAILED ({err})')
+                        batch_failures.append(g)
+                        fetched_results[g] = []
+                    else:
+                        key = _cache_key(g, confidence)
+                        _put_entry(key, str(date.today()), ev_limit,
+                                   stmts_to_json(stmts))
+                        fetched_results[g] = stmts
+                        if verbose:
+                            print(f'  {g}: {len(stmts)} statements (fetched)')
+                        consecutive_failures = 0
+
+            # If most of the batch failed, reduce concurrency
+            if len(batch_failures) >= len(batch) * 0.5:
+                consecutive_failures += 1
+                if consecutive_failures >= 2 and concurrency > 1:
+                    concurrency = 1
+                    if verbose:
+                        print('  Throttled — reducing to sequential fetching.')
+            else:
+                consecutive_failures = 0
+
+    elif needs_fetch:
+        # -- Sequential path --
+        for g in tqdm(needs_fetch, disable=not verbose):
+            g, stmts, err = _fetch_with_retry(
+                g, confidence, ev_limit, max_retries=3, verbose=verbose,
+            )
+            if err:
+                if verbose:
+                    print(f'  {g}: FAILED ({err})')
+                fetched_results[g] = []
+            else:
+                key = _cache_key(g, confidence)
+                _put_entry(key, str(date.today()), ev_limit,
+                           stmts_to_json(stmts))
+                fetched_results[g] = stmts
                 if verbose:
                     print(f'  {g}: {len(stmts)} statements (fetched)')
-                if len(genes) > 1:
+                if len(needs_fetch) > 1:
                     time.sleep(sleep_between)
-            except Exception as e:
-                if verbose:
-                    print(f'  {g}: FAILED ({e})')
-                stmts = []
 
-        all_stmts.extend(stmts)
+    # Reassemble in original gene order
+    all_stmts = []
+    for g in genes:
+        all_stmts.extend(cached_results.get(g, fetched_results.get(g, [])))
 
     if verbose and len(genes) > 1:
-        print(f'\nTotal: {len(all_stmts)} statements ({n_cached} cached)')
+        n_cached = len(cached_results)
+        n_fetched = sum(1 for g in fetched_results if fetched_results[g])
+        print(f'\nTotal: {len(all_stmts)} statements '
+              f'({n_cached} cached, {n_fetched} fetched)')
 
     return all_stmts
 

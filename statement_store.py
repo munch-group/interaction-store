@@ -239,6 +239,7 @@ from gene_registry import _resolve_path, _split_candidates, _validate_path, _mak
 def query_statements(intersection: bool = True,
                      store_path=None,
                      gene: str = None,
+                     context: str = None,
                      **kwargs) -> list[dict]:
     """Query the statement store, returning matching raw statement dicts.
 
@@ -263,6 +264,9 @@ def query_statements(intersection: bool = True,
         True (default) = AND logic; False = OR logic across filters.
     gene : str, optional
         Regex pattern matched against all agent names in a statement.
+    context : str, optional
+        Alias for ``evidence_annotations_context``. Regex pattern matched
+        against the context annotation on each evidence object.
     **kwargs
         Path-based regex filters (see above).
 
@@ -275,6 +279,10 @@ def query_statements(intersection: bool = True,
         return []
     with open(p) as f:
         raw = json.load(f)
+
+    # Alias: context → evidence_annotations_context
+    if context is not None:
+        kwargs.setdefault('evidence_annotations_context', context)
 
     str_kwargs = {k: v for k, v in kwargs.items() if isinstance(v, str)}
     # Validate paths against a sample of entries

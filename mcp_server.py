@@ -28,6 +28,8 @@ If not using pixi, replace with:
 """
 
 import argparse
+from contextlib import redirect_stderr
+import io
 import json
 import pathlib
 import sys
@@ -68,7 +70,11 @@ def _lookup_coords(gene_name: str) -> dict:
     coords = {}
     try:
         from geneinfo.coords import gene_coords
-        hits = gene_coords(gene_name, 'hg38')
+        with redirect_stderr(io.StringIO()) as f:
+            hits = gene_coords(gene_name, 'hg38')
+        s = f.getvalue()
+        # if s:
+        #     print('Not all gene coordinates could be resolved')
         if hits:
             chrom, start, end, _ = hits[0]
             coords['hg38'] = {'chrom': chrom, 'start': start, 'end': end}

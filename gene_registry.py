@@ -13,7 +13,7 @@ import json
 import pathlib
 from typing import Any
 
-REGISTRY_PATH = pathlib.Path(__file__).parent / 'genes.json'
+REGISTRY_PATH = pathlib.Path(__file__).parent / 'agents.json'
 
 
 def _atomic_json_write(path: pathlib.Path, data, **kwargs):
@@ -34,6 +34,8 @@ def _atomic_json_write(path: pathlib.Path, data, **kwargs):
 # ── I/O ───────────────────────────────────────────────────────────────────────
 
 def load_registry(path=REGISTRY_PATH) -> dict:
+    if isinstance(path, str):
+        path = pathlib.Path(path)
     if not path.exists():
         return {}
     with open(path) as f:
