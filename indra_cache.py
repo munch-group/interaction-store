@@ -183,16 +183,27 @@ def _fetch_one(gene: str, confidence, ev_limit: int) -> list:
 
     Returns a list of INDRA Statement objects (may be empty on failure).
     Raises on network/API errors so the caller can handle retries.
+
+    Stderr is suppressed during the call because INDRA's internal
+    pagination thread prints raw tracebacks on connection resets that
+    cannot be caught from Python.
     """
+    import sys, io
     query = _build_query(gene, confidence)
-    if query is None:
-        from indra.sources.indra_db_rest import get_statements
-        proc = get_statements(agents=[gene], ev_limit=ev_limit)
-        return proc.statements
-    else:
-        from indra.sources.indra_db_rest.api import get_statements_from_query
-        proc = get_statements_from_query(query, ev_limit=ev_limit)
-        return proc.statements if hasattr(proc, 'statements') else proc
+    # Suppress INDRA's internal thread tracebacks on connection resets.
+    _real_stderr = sys.stderr
+    sys.stderr = io.StringIO()
+    try:
+        if query is None:
+            from indra.sources.indra_db_rest import get_statements
+            proc = get_statements(agents=[gene], ev_limit=ev_limit)
+            return proc.statements
+        else:
+            from indra.sources.indra_db_rest.api import get_statements_from_query
+            proc = get_statements_from_query(query, ev_limit=ev_limit)
+            return proc.statements if hasattr(proc, 'statements') else proc
+    finally:
+        sys.stderr = _real_stderr
 
 
 def _fetch_with_retry(gene: str, confidence, ev_limit: int,
@@ -216,8 +227,8 @@ def _fetch_with_retry(gene: str, confidence, ev_limit: int,
             # Transient network / rate-limit error — back off and retry
             delay = base_delay * (2 ** attempt)
             if verbose:
-                print(f'  {gene}: attempt {attempt+1}/{max_retries} failed '
-                      f'({type(e).__name__}), retrying in {delay:.0f}s...')
+                tqdm.write(f'  {gene}: attempt {attempt+1}/{max_retries} failed '
+                           f'({type(e).__name__}), retrying in {delay:.0f}s...')
             time.sleep(delay)
         except Exception as e:
             # Non-transient error — don't retry
@@ -303,74 +314,31 @@ def cached_get_statements(
     # Fetch cache misses
     fetched_results = {}  # gene -> stmts
 
-    if needs_fetch and parallel and parallel > 1:
-        # -- Parallel path with adaptive concurrency --
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-
-        concurrency = min(parallel, len(needs_fetch))
-        remaining = list(needs_fetch)
-        consecutive_failures = 0
-
-        
-
-        while remaining:
-            batch = remaining[:concurrency]
-            remaining = remaining[len(batch):]
-            batch_failures = []
-
-            with ThreadPoolExecutor(max_workers=len(batch)) as pool:
-                futures = {
-                    pool.submit(
-                        _fetch_with_retry, g, confidence, ev_limit,
-                        max_retries=3, verbose=verbose,
-                    ): g
-                    for g in batch
-                }
-                for future in as_completed(futures):
-                    g, stmts, err = future.result()
-                    if err:
-                        if verbose:
-                            print(f'  {g}: FAILED ({err})')
-                        batch_failures.append(g)
-                        fetched_results[g] = []
-                    else:
-                        key = _cache_key(g, confidence)
-                        _put_entry(key, str(date.today()), ev_limit,
-                                   stmts_to_json(stmts))
-                        fetched_results[g] = stmts
-                        if verbose:
-                            print(f'  {g}: {len(stmts)} statements (fetched)')
-                        consecutive_failures = 0
-
-            # If most of the batch failed, reduce concurrency
-            if len(batch_failures) >= len(batch) * 0.5:
-                consecutive_failures += 1
-                if consecutive_failures >= 2 and concurrency > 1:
-                    concurrency = 1
-                    if verbose:
-                        print('  Throttled — reducing to sequential fetching.')
-            else:
-                consecutive_failures = 0
-
-    elif needs_fetch:
-        # -- Sequential path --
-        for g in tqdm(needs_fetch, disable=not verbose):
+    if needs_fetch:
+        def _do_fetch(g):
+            """Fetch, cache, and return (gene, stmts, error)."""
             g, stmts, err = _fetch_with_retry(
                 g, confidence, ev_limit, max_retries=3, verbose=verbose,
             )
-            if err:
-                if verbose:
-                    print(f'  {g}: FAILED ({err})')
-                fetched_results[g] = []
-            else:
+            if not err:
                 key = _cache_key(g, confidence)
                 _put_entry(key, str(date.today()), ev_limit,
                            stmts_to_json(stmts))
-                fetched_results[g] = stmts
-                if verbose:
-                    print(f'  {g}: {len(stmts)} statements (fetched)')
-                if len(needs_fetch) > 1:
-                    time.sleep(sleep_between)
+            return (g, stmts, err)
+
+        workers = min(parallel, len(needs_fetch)) if parallel and parallel > 1 else 1
+
+        from tqdm.contrib.concurrent import thread_map
+        results = thread_map(
+            _do_fetch, needs_fetch,
+            max_workers=workers,
+            desc='Fetching from INDRA DB',
+            # disable=not verbose,
+            tqdm_class=tqdm,
+        )
+
+        for g, stmts, err in results:
+            fetched_results[g] = [] if err else stmts
 
     # Reassemble in original gene order
     all_stmts = []

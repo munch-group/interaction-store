@@ -1,23 +1,24 @@
 """
 statement_store.py
 ------------------
-I/O and query functions for the INDRA statement store (statements.json).
+I/O and query functions for an INDRA statement store (json).
 
 Public API
 ----------
-load_store(path=None)          → list[Statement]
-save_store(stmts, path=None)   → None
-add_statements(new, path=None) → list[Statement]
+load_store(path)          → list[Statement]
+save_store(stmts, path)   → None
+add_statements(new, path) → list[Statement]
 ev(text, ...)                  → Evidence
 ag(name, ...)                  → Agent
-summarize(path=None)           → None  (prints summary)
-stmts_for(gene, path=None)     → list[Statement]
-all_contexts(store_path=None)  → dict[str, int]
+summarize(path)           → None  (prints summary)
+stmts_for(gene, path)     → list[Statement]
+all_contexts(path)  → dict[str, int]
 genes_by_context(context, ...) → GeneList
 interactors(gene, ...)         → list[dict]
 query_statements(**kwargs)     → list[dict]
 """
 
+import os
 import json
 import pathlib
 from datetime import date
@@ -27,9 +28,6 @@ from indra.statements import (
     Agent, Evidence,
     stmts_to_json, stmts_from_json,
 )
-
-STORE_PATH = pathlib.Path(__file__).parent / 'statements.json'
-
 
 def _atomic_json_write(path: pathlib.Path, data, **kwargs):
     """Write JSON atomically: temp file + rename to avoid corruption."""
@@ -48,23 +46,21 @@ def _atomic_json_write(path: pathlib.Path, data, **kwargs):
 
 # ── I/O ───────────────────────────────────────────────────────────────────────
 
-def load_store(path=None):
+def load_store(path: str):
     """Load statements from JSON file, return list of INDRA Statement objects."""
-    path = path or STORE_PATH
-    if not path.exists():
+    if not os.path.exists(path):
         return []
     with open(path) as f:
         return stmts_from_json(json.load(f))
 
 
-def save_store(stmts, path=None):
+def save_store(stmts, path: str):
     """Serialise statement list to JSON file (atomic write)."""
-    path = pathlib.Path(path or STORE_PATH)
     _atomic_json_write(path, stmts_to_json(stmts))
     print(f'Saved {len(stmts)} statements → {path}')
 
 
-def add_statements(new_stmts, path=None):
+def add_statements(new_stmts, path: str):
     """Append new statements to the persistent store."""
     existing = load_store(path)
     combined = existing + new_stmts
@@ -114,7 +110,7 @@ def ag(name, hgnc=None, up=None):
 
 # ── Summary / filtering ─────────────────────────────────────────────────────
 
-def summarize(path=None):
+def summarize(path: str):
     """Print a readable summary of the store."""
     stmts = load_store(path)
     print(f'{len(stmts)} statements in store\n')
@@ -132,7 +128,7 @@ def summarize(path=None):
         print(f'  [{type(s).__name__:20s}]  {subj:12s} → {obj:12s}  "{txt}"')
 
 
-def stmts_for(gene, path=None):
+def stmts_for(gene, path: str):
     """Return all statements involving a given gene."""
     stmts = load_store(path)
     return [
@@ -158,12 +154,11 @@ def _agents_from_raw(stmt_dict: dict) -> list[str]:
     return names
 
 
-def all_contexts(store_path=None) -> dict[str, int]:
+def all_contexts(path: str) -> dict[str, int]:
     """Return {context_tag: count} from the statement store."""
-    p = pathlib.Path(store_path) if store_path else STORE_PATH
-    if not p.exists():
+    if not os.path.exists(path):
         return {}
-    with open(p) as f:
+    with open(path) as f:
         raw = json.load(f)
     contexts: dict[str, int] = {}
     for s in raw:
@@ -174,13 +169,12 @@ def all_contexts(store_path=None) -> dict[str, int]:
     return dict(sorted(contexts.items()))
 
 
-def genes_by_context(context: str, store_path=None):
+def genes_by_context(context: str, path: str):
     """Return genes appearing in statements with the given context tag as a GeneList."""
     from geneinfo.genelist import GeneList
-    p = pathlib.Path(store_path) if store_path else STORE_PATH
-    if not p.exists():
+    if not os.path.exists(path):
         return GeneList([])
-    with open(p) as f:
+    with open(path) as f:
         raw = json.load(f)
     genes: set[str] = set()
     for s in raw:
@@ -194,17 +188,16 @@ def genes_by_context(context: str, store_path=None):
     return GeneList(sorted(genes))
 
 
-def interactors(gene: str, store_path=None) -> list[dict]:
+def interactors(gene: str, path:str) -> list[dict]:
     """
     Return all genes that interact with *gene* in the statement store.
 
     Returns a list of dicts:
       [{'gene': 'MAPT', 'type': 'Phosphorylation', 'context': '...', 'refs': [...]}, ...]
     """
-    p = pathlib.Path(store_path) if store_path else STORE_PATH
-    if not p.exists():
+    if not os.path.exists(path):
         return []
-    with open(p) as f:
+    with open(path) as f:
         raw = json.load(f)
     results = []
     for s in raw:
@@ -236,8 +229,8 @@ def interactors(gene: str, store_path=None) -> list[dict]:
 from gene_registry import _resolve_path, _split_candidates, _validate_path, _make_path_filter
 
 
-def query_statements(intersection: bool = True,
-                     store_path=None,
+def query_statements(path,
+                     intersection: bool = True, 
                      gene: str = None,
                      context: str = None,
                      **kwargs) -> list[dict]:
@@ -260,10 +253,10 @@ def query_statements(intersection: bool = True,
 
     Parameters
     ----------
+    gene : str
+        Regex pattern matched against all agent names in a statement.
     intersection : bool
         True (default) = AND logic; False = OR logic across filters.
-    gene : str, optional
-        Regex pattern matched against all agent names in a statement.
     context : str, optional
         Alias for ``evidence_annotations_context``. Regex pattern matched
         against the context annotation on each evidence object.
@@ -274,10 +267,10 @@ def query_statements(intersection: bool = True,
     """
     import re
 
-    p = pathlib.Path(store_path) if store_path else STORE_PATH
-    if not p.exists():
+    # p = pathlib.Path(path) #if path else STORE_PATH
+    if not os.path.exists(path):
         return []
-    with open(p) as f:
+    with open(path) as f:
         raw = json.load(f)
 
     # Alias: context → evidence_annotations_context
