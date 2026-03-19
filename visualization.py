@@ -482,6 +482,66 @@ def build_graph(stmts, genes=None, reg=None, mode='any', singletons=False):
     return G
 
 
+# Default priority for dedup_parallel_edges: first entry = highest priority.
+DEFAULT_EDGE_PRIORITY = {st: i for i, st in enumerate([
+    'Phosphorylation',
+    'Dephosphorylation',
+    'Ubiquitination',
+    'Deubiquitination',
+    'Inhibition',
+    'Activation',
+    'DecreaseAmount',
+    'IncreaseAmount',
+    'Complex',
+])}
+
+
+def dedup_parallel_edges(G, priority=None):
+    """Remove parallel edges, keeping the highest-priority type per pair.
+
+    Parameters
+    ----------
+    G : graph_tool.Graph
+        Graph with an ``ep['stmt_type']`` edge property.
+    priority : list[str], optional
+        Statement types in descending priority order (first = kept
+        preferentially). Types not listed get lowest priority.
+        Defaults to ``DEFAULT_EDGE_PRIORITY``.
+
+    Returns
+    -------
+    graph_tool.Graph — the same graph (modified in place).
+    """
+    if priority is not None:
+        prio = {st: i for i, st in enumerate(priority)}
+    else:
+        prio = DEFAULT_EDGE_PRIORITY
+
+    # For each (src, tgt) pair, track the best edge and mark the rest.
+    best = {}   # (src_idx, tgt_idx) -> (edge_index, priority_value)
+    remove_idx = []
+    for e in G.edges():
+        key = (int(e.source()), int(e.target()))
+        eidx = G.edge_index[e]
+        p = prio.get(G.ep['stmt_type'][e], 99)
+        if key not in best or p < best[key][1]:
+            if key in best:
+                remove_idx.append(best[key][0])
+            best[key] = (eidx, p)
+        else:
+            remove_idx.append(eidx)
+
+    # Build a boolean filter map and purge.
+    efilt = G.new_edge_property('bool', val=True)
+    for idx in remove_idx:
+        efilt.a[idx] = False
+    G.set_edge_filter(efilt)
+    G.purge_edges()
+    G.clear_filters()
+
+    return G
+
+
 def _cytoscape_json(G, reg, edge_evidence,
                     fill_by, border_by, fill_colors, border_colors,
                     fill_multi, pos=None):
@@ -1373,7 +1433,7 @@ def circos_plot(stmts, reg, cmap='shifted_hsv', scalings={}, assembly='hg38',
         a, b = agent_list
         if a and b and a.name in gene_coordinates and b.name in gene_coordinates:
             _from, _to = gene_coordinates[a.name], gene_coordinates[b.name]
-            _from[1] *= scalings.get(_from[0], 1)
+            print(_from[0], _to[0], scalings.get(_from[0], 1), scalings.get(_to[0], 1))
             _from[2] *= scalings.get(_from[0], 1)
             _to[1] *= scalings.get(_to[0], 1)
             _to[2] *= scalings.get(_to[0], 1)

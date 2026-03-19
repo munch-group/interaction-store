@@ -1,3 +1,273 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:9bfe07954e746f5945ff15fd2a7d5c0a9182491949740468410a1e26ffe48ec0
-size 7593
+[
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "TTLL1",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "TUBA4A",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "TTLL1 is the predominant neuronal polyglutamylase that modifies alpha-tubulin, adding polyglutamate side chains that modulate tau binding affinity and regulate MAP–MT interactions",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Tubulin post-translational modifications",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ]
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "TTLL7",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "TUBB3",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "TTLL7 is a beta-tubulin-selective polyglutamylase enriched in neurons; polyglutamylation of beta-tubulin modulates motor protein processivity and MAP binding on the MT lattice",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Tubulin post-translational modifications",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ]
+  },
+  {
+    "type": "Acetylation",
+    "enz": {
+      "name": "ATAT1",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "TUBA1A",
+      "db_refs": {}
+    },
+    "residue": "K",
+    "position": "40",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "ATAT1 (alpha-tubulin acetyltransferase 1) is the major acetyltransferase for alpha-tubulin Lys40; acetylation marks stable, long-lived MTs and promotes kinesin-1 and dynein processivity",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Tubulin post-translational modifications",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ]
+  },
+  {
+    "type": "Deacetylation",
+    "enz": {
+      "name": "HDAC6",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "TUBA1A",
+      "db_refs": {}
+    },
+    "residue": "K",
+    "position": "40",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "HDAC6 is the primary cytoplasmic alpha-tubulin deacetylase at Lys40; removal of acetylation reduces MT stability and kinesin-1/dynein processivity. HDAC6 activity is itself regulated by Akt phosphorylation at Ser22",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Tubulin post-translational modifications",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ]
+  },
+  {
+    "type": "Deacetylation",
+    "enz": {
+      "name": "SIRT2",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "TUBA1A",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "SIRT2 is a NAD+-dependent class III deacetylase that deacetylates alpha-tubulin; acts as a secondary tubulin deacetylase alongside HDAC6, particularly during mitosis and neuronal differentiation",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Tubulin post-translational modifications",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ]
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "TTL",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "TUBA1A",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "TTL (tubulin tyrosine ligase) re-adds the C-terminal tyrosine to detyrosinated alpha-tubulin, completing the tyrosination/detyrosination cycle. Tyrosinated MTs are preferred substrates for CLIP-170 and kinesin-13 (MCAK), marking dynamic MT plus-ends",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Tubulin post-translational modifications",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ]
+  },
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "VASH1",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "TUBA1A",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "VASH1, in complex with its stabilising partner SVBP, is the principal tubulin carboxypeptidase that removes the C-terminal tyrosine from alpha-tubulin. Detyrosinated MTs are long-lived and preferentially bound by CAMSAP proteins and dynein/dynactin, biasing retrograde transport",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Tubulin post-translational modifications",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ]
+  },
+  {
+    "type": "Phosphorylation",
+    "enz": {
+      "name": "MARK2",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "MAPT",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "MARK2 (PAR-1 kinase) phosphorylates tau at KXGS motifs (notably Ser262 and Ser356), causing tau dissociation from MTs. Phosphorylation at these sites also disrupts HDAC6–tau interaction, linking MARK2 activity to both MT occupancy and tubulin acetylation regulation",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Tubulin post-translational modifications",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ]
+  },
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "AGTPBP1",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "TUBA4A",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "CCP1 (AGTPBP1) is a cytosolic carboxypeptidase that removes polyglutamate side chains from tubulin, reversing TTLL-mediated polyglutamylation. Loss of CCP1 causes Purkinje cell degeneration in pcd mice due to hyperglutamylation-driven MT instability",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Tubulin post-translational modifications",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ]
+  },
+  {
+    "type": "Phosphorylation",
+    "enz": {
+      "name": "FYN",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "MAPT",
+      "db_refs": {}
+    },
+    "residue": "Y",
+    "position": "18",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "Fyn kinase phosphorylates tau at Tyr18 in the N-terminal projection domain; pY18-tau is enriched in dendrites and modulates tau interaction with the plasma membrane and Fyn-mediated NMDA receptor signalling. Dendritic tau–Fyn–NR2B complex is implicated in excitotoxicity in AD models",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Tubulin post-translational modifications",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ]
+  }
+]

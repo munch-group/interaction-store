@@ -1,3 +1,1128 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:16d72e6183544934c7da85130574cf2935ca167458797b917e38307722be41cb
-size 30787
+[
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "ADRA2C",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "ADCY",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "ADRA2C couples to Gi, suppresses adenylyl cyclase, reducing intracellular cAMP",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "cAMP/PKA module",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 1486070157432571841
+      },
+      {
+        "source_api": "manual",
+        "pmid": "10336518",
+        "text": "Alpha2C adrenoceptors inhibit adenylyl cyclase in mouse striatum.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "10336518"
+        },
+        "source_hash": 2178687875094544840
+      }
+    ],
+    "id": "4bcf64fc-a522-4d5a-a853-a4a6bbb31e14",
+    "matches_hash": "-12829614632985558"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "ADCY",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "cAMP",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "Adenylyl cyclase catalyses ATP\u2192cAMP",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "cAMP/PKA module",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 4106415064956849004
+      },
+      {
+        "source_api": "manual",
+        "pmid": "26393535",
+        "text": "Catalytic mechanism of mammalian adenylyl cyclase: converts ATP to cAMP.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "26393535"
+        },
+        "source_hash": -5854047671735047839
+      }
+    ],
+    "id": "a3589638-0ad3-4cee-98fc-da3a834e97f9",
+    "matches_hash": "32897277545595947"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "cAMP",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "PKA",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "cAMP binds PKA regulatory subunits, releasing and activating catalytic subunits PRKACA/B",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "cAMP/PKA module",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 8424872444578049967
+      },
+      {
+        "source_api": "manual",
+        "pmid": "7803765",
+        "text": "cAMP-dependent protein kinases and cAMP signal transduction (review).",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "7803765"
+        },
+        "source_hash": -2033665483074859891
+      }
+    ],
+    "id": "b2b51a62-d734-417b-8b3c-ebe1b277ef10",
+    "matches_hash": "16969436095342212"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "cAMP",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "PRKX",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "PRKX is a cAMP-dependent protein kinase catalytic subunit at Xp22.3; activated by cAMP analogously to PRKACA",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "cAMP/PKA module \u2014 X-linked",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 9031235963241872731
+      },
+      {
+        "source_api": "manual",
+        "pmid": "10026146",
+        "text": "PrKX is a novel catalytic subunit of cAMP-dependent protein kinase regulated by regulatory subunit type I; inhibition reversed by cAMP.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "10026146"
+        },
+        "source_hash": 6621205505742423981
+      }
+    ],
+    "id": "fe9cd694-d118-483e-b92d-540e75e9fbde",
+    "matches_hash": "-31977027961813584"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "PJA1",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "PKA",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "PJA1 (X-linked RING E3 ligase) ubiquitinates PRKAR1A/2A for proteasomal degradation, depleting the inhibitory R-subunit pool and amplifying free catalytic PKA activity. Opposes ADRA2C suppression of cAMP at the PKA level.",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "cAMP/PKA module \u2014 rescue candidate",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": -5119204518681176324
+      },
+      {
+        "source_api": "manual",
+        "pmid": "38898454",
+        "text": "PJA1 activates PKA signalling. INDRA DB statement backed by literature.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "38898454"
+        },
+        "source_hash": -3151401835911200780
+      }
+    ],
+    "id": "9bfb17f3-ecd1-4292-bc37-a1af6c1bfddf",
+    "matches_hash": "-5921388463803883"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "AKAP4",
+        "db_refs": {}
+      },
+      {
+        "name": "PKA",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "AKAP4 scaffolds PKA R/C subunits to the fibrous sheath in spermatids; localises PKA without altering its activation state",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "cAMP/PKA module \u2014 structural",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": -1626348614566829083
+      },
+      {
+        "source_api": "manual",
+        "pmid": "19854247",
+        "text": "AKAP4 forms a complex with PKA. INDRA DB statement backed by literature.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "19854247"
+        },
+        "source_hash": -525146682894874417
+      }
+    ],
+    "id": "eabf8a14-fa66-4a94-933d-6f48ef10108e",
+    "matches_hash": "-20128915132736755"
+  },
+  {
+    "type": "Phosphorylation",
+    "enz": {
+      "name": "PKA",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "MAPT",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "PKA phosphorylates tau (MAPT) at multiple sites including Ser214, Thr231; overlapping sites also targeted by PRKX/PRKY",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "cAMP/PKA \u2192 tau \u2192 MT lattice",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": -3444566652753304478
+      },
+      {
+        "source_api": "manual",
+        "pmid": "38492709",
+        "text": "PKA phosphorylates MAPT (tau). INDRA DB statement backed by literature.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "38492709"
+        },
+        "source_hash": 3160165809645197985
+      }
+    ],
+    "id": "2c4b136d-c26a-4e27-b628-99f4600e1365",
+    "matches_hash": "16387062886917127"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "IRS2",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "AKT1",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "IRS2 docks to insulin/IGF receptor, recruits PI3K, generating PIP3 which recruits and activates Akt",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "IRS2/PI3K/Akt module",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 8147422848985924221
+      },
+      {
+        "source_api": "manual",
+        "pmid": "36269134",
+        "text": "IRS2 activates AKT1. INDRA DB statement backed by literature.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "36269134"
+        },
+        "source_hash": 8394250009958771198
+      }
+    ],
+    "id": "bd1bb498-04aa-40b5-a0e8-89785d3ef5e1",
+    "matches_hash": "32468965079915477"
+  },
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "AKT1",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "GSK3B",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "Akt phosphorylates GSK3\u03b2 at Ser9, causing inhibitory autoinhibition; reduces GSK3\u03b2-dependent tau phosphorylation",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "IRS2/PI3K/Akt \u2192 GSK3\u03b2 \u2192 tau",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": -6385292594333759661
+      },
+      {
+        "source_api": "manual",
+        "pmid": "12686140",
+        "text": "AKT1 inhibits GSK3B. INDRA DB statement backed by literature.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "12686140"
+        },
+        "source_hash": -6376483057164135003
+      }
+    ],
+    "id": "0c86a199-508a-42ea-9192-dcd73d3fd72f",
+    "matches_hash": "10995712938379764"
+  },
+  {
+    "type": "Phosphorylation",
+    "enz": {
+      "name": "GSK3B",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "MAPT",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "GSK3\u03b2 is a principal tau kinase; phosphorylates multiple epitopes including Thr231, Ser396. Hyperphosphorylated tau detaches from MTs, reducing lattice occupancy for motor competition",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "GSK3\u03b2 \u2192 tau \u2192 MT lattice",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 5448990261406569662
+      },
+      {
+        "source_api": "manual",
+        "pmid": "30770411",
+        "text": "GSK3B phosphorylates MAPT (tau). INDRA DB statement backed by literature.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "30770411"
+        },
+        "source_hash": 1281142711330404443
+      }
+    ],
+    "id": "d8206430-b097-4458-8178-52505389436b",
+    "matches_hash": "-7454561050223899"
+  },
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "AKT1",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "HDAC6",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "Akt phosphorylates HDAC6 at Ser22, inhibiting its \u03b1-tubulin Lys40 deacetylase activity. Acetylated tubulin is the preferred track for kinesin-1 (KIF5B) and dynein. IRS2 \u2192 Akt thus promotes selective MT-based transport via X-linked HDAC6",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "IRS2/Akt \u2192 HDAC6 \u2014 X-linked effector, direct rescue candidate",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": -4404272585261868539
+      },
+      {
+        "source_api": "manual",
+        "pmid": "30935091",
+        "text": "AKT1 inhibits HDAC6. INDRA DB statement backed by literature.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "30935091"
+        },
+        "source_hash": -6408526999843291870
+      }
+    ],
+    "id": "96f54385-2a01-4609-bb9b-3945076378b1",
+    "matches_hash": "-17497460660198817"
+  },
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "TPTE",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "PIP3",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "TPTE is a PTEN paralog with PI(3,4,5)P3 3-phosphatase activity; dephosphorylates PIP3, opposing IRS2\u2192PI3K. Tissue-restricted (testis)",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "TPTE/OCRL phosphoinositide triangle",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": -8542189973019502626
+      },
+      {
+        "source_api": "manual",
+        "pmid": "11716755",
+        "text": "TPIP (TPTE-related) is a phosphoinositide 3-phosphatase with activity against PtdIns(3,4,5)P3.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "11716755"
+        },
+        "source_hash": 6657562092019900816
+      }
+    ],
+    "id": "a9ed177d-733c-4d30-8d6f-1946d7205af6",
+    "matches_hash": "-6294677814217378"
+  },
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "OCRL",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "PIP2",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "OCRL (X-linked) is a PI(4,5)P2 5-phosphatase; depletes PI(4,5)P2 at endosomes. Adjacent phosphoinositide pool to PIP3 regulated by TPTE and IRS2. Functional triangle but distinct lipid species \u2014 not directly rescuable across genes",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "TPTE/OCRL phosphoinositide triangle",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": -4161137233225423645
+      },
+      {
+        "source_api": "manual",
+        "pmid": "9430698",
+        "text": "Cell lines deficient in OCRL inositol polyphosphate 5-phosphatase accumulate phosphatidylinositol 4,5-bisphosphate.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "9430698"
+        },
+        "source_hash": -5090363658920858511
+      }
+    ],
+    "id": "dde0da4b-5a1b-46ec-af47-3e293f13e723",
+    "matches_hash": "2843322351507478"
+  },
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "MAPT",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "MT_lattice",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "Phosphorylated tau dissociates from MTs, reducing MT lattice occupancy. Hypophosphorylated tau competes with MAP7D3 and kinesin-1 for binding sites",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "tau \u2192 MT occupancy competition",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": -7481957610367502349
+      },
+      {
+        "source_api": "manual",
+        "pmid": "10090741",
+        "text": "Phosphorylation at Ser262 and Ser214 detaches tau protein from microtubules.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "10090741"
+        },
+        "source_hash": 1327925161259448397
+      }
+    ],
+    "id": "4fa1d24f-ad40-4dbd-9e8a-b2cee251cfec",
+    "matches_hash": "28423369623943974"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "MAP7D3",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "MT_lattice",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "MAP7D3 (Xq26.1) binds MT lattice, recruits KIF5 (kinesin-1) for anterograde transport. Competes with tau for overlapping binding sites. IRS2\u2192GSK3\u03b2\u2192tau axis sets available MAP7D3 binding surface",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "MAP7D3 / tau competition \u2014 indirect rescue candidate",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 7185798562075746101
+      },
+      {
+        "source_api": "manual",
+        "pmid": "30770434",
+        "text": "MAP7 family proteins regulate kinesin-1 recruitment and activation on microtubules.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "30770434"
+        },
+        "source_hash": 4353207212427300321
+      }
+    ],
+    "id": "939c5712-3d5f-44e4-999f-1f789a7fa43d",
+    "matches_hash": "35408862852688035"
+  },
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "HDAC6",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "MT_lattice",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "HDAC6 deacetylates \u03b1-tubulin Lys40, reducing acetylated MT track available for kinesin-1 and dynein processivity",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "HDAC6 \u2192 MT acetylation \u2192 motor preference",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": -5536918330012509057
+      },
+      {
+        "source_api": "manual",
+        "pmid": "12024216",
+        "text": "HDAC6 is a microtubule-associated deacetylase that deacetylates alpha-tubulin in vivo.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "12024216"
+        },
+        "source_hash": -3500534325790892757
+      }
+    ],
+    "id": "663387a7-d82c-4dfa-aa3d-3d1617c3b4a2",
+    "matches_hash": "-15118570370790748"
+  },
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "SORCS3",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "TrkB_endosome",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "SORCS3 (VPS10-domain receptor) gates TrkB sorting to late endosomes after BDNF binding; controls cargo identity of retrograde signalling endosomes on axonal MTs",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "Neurotrophin retrograde transport",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 3824644980568513058
+      },
+      {
+        "source_api": "manual",
+        "pmid": "29440124",
+        "text": "SORCS1 and SORCS3 act as intracellular trafficking receptors for TrkB to attenuate signaling by BDNF.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "29440124"
+        },
+        "source_hash": 8640558290985535300
+      }
+    ],
+    "id": "7a30e04f-3267-41e2-a5e4-88690e15d08b",
+    "matches_hash": "29140536714385818"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "UPF3B",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "NMD_fragment",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "UPF3B (X-linked) is a core NMD factor; recruits endonuclease that generates 3\u2032 cleavage fragment from NMD targets",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "NMD pathway \u2014 sequential with XRN2",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": -4558122463941978266
+      },
+      {
+        "source_api": "manual",
+        "pmid": "27040500",
+        "text": "UPF3B is a core NMD factor; the antagonistic gene paralogs Upf3a and Upf3b govern nonsense-mediated RNA decay.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "27040500"
+        },
+        "source_hash": -242230520969444539
+      }
+    ],
+    "id": "d07a45f4-a2c5-44cc-aced-f56db69780dd",
+    "matches_hash": "15373856112303119"
+  },
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "XRN2",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "NMD_fragment",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "XRN2 (autosomal 5\u2032\u21923\u2032 exoribonuclease) degrades the 3\u2032 cleavage fragment generated after UPF3B-mediated cleavage. Sequential steps: UPF3B generates substrate, XRN2 degrades it. XRN2 upregulation cannot rescue UPF3B loss \u2014 wrong order",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "NMD pathway \u2014 not rescuable",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 8895374253151865258
+      },
+      {
+        "source_api": "manual",
+        "pmid": "23517755",
+        "text": "XRN 5-to-3 exoribonucleases degrade RNA substrates during NMD and other decay pathways (review).",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "23517755"
+        },
+        "source_hash": 5626528904448692818
+      }
+    ],
+    "id": "b71866fa-9efe-416a-a2e5-2f61bf0e22cb",
+    "matches_hash": "-9460688208051406"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "EDA",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "NFKB1",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "EDA (X-linked ectodysplasin) signals via EDAR \u2192 TRAF6 \u2192 IKK \u2192 NF-\u03baB; activates \u03baB-dependent transcriptional programme",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "NF-\u03baB module",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": -2343796361734769671
+      },
+      {
+        "source_api": "manual",
+        "pmid": "30037996",
+        "text": "EDA activates NFKB1. INDRA DB statement backed by literature.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "30037996"
+        },
+        "source_hash": -2767356310120121880
+      }
+    ],
+    "id": "57d24372-a406-43e3-89e7-3cca43e3edc2",
+    "matches_hash": "16585339530911738"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "NFKB1",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "HIVEP3",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "HIVEP3 binds \u03baB enhancer elements; acts downstream of NF-\u03baB activation driven by EDA/EDAR signalling. Losing EDA signal collapses upstream input; HIVEP3 upregulation cannot rescue",
+        "annotations": {
+          "date": "2026-03-11",
+          "context": "NF-\u03baB module \u2014 not rescuable",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 3415920528533737671
+      },
+      {
+        "source_api": "manual",
+        "pmid": "11161801",
+        "text": "HIVEP3 is a zinc finger protein that binds kappa-B enhancer elements; molecular cloning and structural characterisation.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "exploratory",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "11161801"
+        },
+        "source_hash": 7612221063335754954
+      }
+    ],
+    "id": "95a42051-a12b-4e09-844c-2d77e4e9ebf5",
+    "matches_hash": "-1855224880132575"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "DYNC1H1",
+        "db_refs": {}
+      },
+      {
+        "name": "DYNLT3",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "pmid": "22939629",
+        "text": "DYNLT3 is a structural subunit of the cytoplasmic dynein-1 complex, binding the dynein heavy chain DYNC1H1. Supported by multiple studies in INDRA DB.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "Dynein motor complex assembly",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "22939629"
+        },
+        "source_hash": -1451418105137895054
+      }
+    ],
+    "id": "74ce514c-0081-40b4-9846-f317c0fdd8a4",
+    "matches_hash": "14783341548746433"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "DYNC1I2",
+        "db_refs": {}
+      },
+      {
+        "name": "DYNLT3",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "pmid": "16189514",
+        "text": "DYNLT3 binds the dynein intermediate chain DYNC1I2 as part of the cytoplasmic dynein-1 complex. Supported by multiple studies in INDRA DB.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "Dynein motor complex assembly",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "16189514"
+        },
+        "source_hash": -6237733647173379813
+      }
+    ],
+    "id": "e4886987-c034-4ee9-a4f6-4a6c6df4ff42",
+    "matches_hash": "-23554173872279791"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "DYNC1LI1",
+        "db_refs": {}
+      },
+      {
+        "name": "DYNLT3",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "pmid": "33961781",
+        "text": "DYNLT3 interacts with the dynein light intermediate chain DYNC1LI1 within the cytoplasmic dynein-1 complex. Supported by multiple studies in INDRA DB.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "Dynein motor complex assembly",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "33961781"
+        },
+        "source_hash": 4657097195845011037
+      }
+    ],
+    "id": "d4648dab-4f5b-4bcf-87be-abedc84e77d2",
+    "matches_hash": "29210046705542598"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "DYNLT3",
+        "db_refs": {}
+      },
+      {
+        "name": "BUB3",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "pmid": "18559670",
+        "text": "DYNLT3 forms a complex with the spindle assembly checkpoint protein BUB3. Supported by multiple studies in INDRA DB.",
+        "annotations": {
+          "date": "2026-03-13",
+          "context": "Spindle checkpoint",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "text_refs": {
+          "PMID": "18559670"
+        },
+        "source_hash": 4270106700937170228
+      }
+    ],
+    "id": "c00b2102-6f5c-4292-9af7-4725d68e7921",
+    "matches_hash": "-14696472052907343"
+  }
+]

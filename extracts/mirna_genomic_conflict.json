@@ -1,3 +1,176 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:71a45d0ada98ce6049e42bb8d7573c755292d4a6abad026de114ed23f020336e
-size 5764
+[
+  {
+    "type": "DecreaseAmount",
+    "subj": {
+      "name": "miR-9",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "ACTL6A",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "miR-9* (the passenger strand of miR-9, also denoted miR-9-3p) directly targets the 3'UTR of BAF53a (ACTL6A), repressing its translation. BAF53a is a subunit of the neural-progenitor BAF (npBAF) chromatin remodelling complex. Its downregulation by miR-9* and miR-124 is required for the switch from npBAF to neuronal nBAF (containing BAF53b/ACTL6B) during post-mitotic neuronal differentiation.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "miRNA neuronal differentiation / genomic conflict",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 1923847560192384756
+      }
+    ],
+    "id": "d4b0f6a7-2e5c-7b1d-e9a4-6f7c8d1b2a34",
+    "matches_hash": "41506978324150697"
+  },
+  {
+    "type": "DecreaseAmount",
+    "subj": {
+      "name": "miR-124",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "ACTL6A",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "miR-124 cooperates with miR-9* to repress BAF53a (ACTL6A) via its 3'UTR. Both miRNAs must act together for full repression; their combined activity triggers the BAF53a-to-BAF53b subunit switch that is essential for dendritic morphogenesis in post-mitotic neurons.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "miRNA neuronal differentiation / genomic conflict",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 2034958671203495867
+      }
+    ],
+    "id": "e5c1a7b8-3f6d-8c2e-f0b5-7a8d9e2c3b45",
+    "matches_hash": "52617089435261708"
+  },
+  {
+    "type": "DecreaseAmount",
+    "subj": {
+      "name": "miR-124",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "PTBP1",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "miR-124 represses PTBP1 (polypyrimidine tract-binding protein 1), a splicing repressor that maintains non-neuronal splicing patterns. Downregulation of PTBP1 by miR-124 during neuronal differentiation derepresses neuron-specific alternative exons and permits upregulation of the neuronal paralog PTBP2/nPTB.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "miRNA neuronal differentiation / genomic conflict",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 3145069782314506978
+      }
+    ],
+    "id": "f6d2b8c9-4a7e-9d3f-a1c6-8b9e0f3d4c56",
+    "matches_hash": "63728190546372819"
+  },
+  {
+    "type": "DecreaseAmount",
+    "subj": {
+      "name": "miR-9",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "REST",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "miR-9 directly targets REST (RE1-silencing transcription factor / NRSF), a master transcriptional repressor of neuronal genes in non-neuronal cells. miR-9-mediated downregulation of REST derepresses a large battery of neuron-specific genes. REST and miR-9 form a double-negative feedback loop, as REST itself represses the miR-9 locus in progenitors.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "miRNA neuronal differentiation / genomic conflict",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 4256170893425617089
+      }
+    ],
+    "id": "a7e3c9d0-5b8f-0e4a-b2d7-9c0f1a4e5d67",
+    "matches_hash": "74839201657483920"
+  },
+  {
+    "type": "DecreaseAmount",
+    "subj": {
+      "name": "miR-9",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "RCOR1",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "miR-9 targets CoREST (RCOR1), a corepressor that partners with REST and LSD1 to silence neuronal gene promoters. Downregulation of RCOR1 by miR-9 dismantles the REST/CoREST/LSD1 repressor complex, complementing the direct targeting of REST itself.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "miRNA neuronal differentiation / genomic conflict",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 5367281904536728190
+      }
+    ],
+    "id": "b8f4d0e1-6c9a-1f5b-c3e8-0d1a2b5f6e78",
+    "matches_hash": "85940312768594031"
+  },
+  {
+    "type": "DecreaseAmount",
+    "subj": {
+      "name": "miR-124",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "RAP2A",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "miR-124 (and miR-9) target Rap2a, a small GTPase that promotes dendritic pruning. Repression of RAP2A by these brain-enriched miRNAs permits dendritic elaboration during neuronal maturation. RAP2A repression is part of the broader miR-9/miR-124 programme that drives irreversible neuronal commitment.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "miRNA neuronal differentiation / genomic conflict",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 6478392015647839201
+      }
+    ],
+    "id": "c9a5e1f2-7d0b-2a6c-d4f9-1e2b3c6a7f89",
+    "matches_hash": "96051423879605142"
+  }
+]

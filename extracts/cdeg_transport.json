@@ -1,3 +1,231 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:d727968fb2ac1751ea43ad9f482722ff2b4971e4a993541d122faf89039e06ed
-size 5795
+[
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "DYNLT3",
+        "db_refs": {}
+      },
+      {
+        "name": "BUB3",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "DYNLT3 (dynein light chain Tctex-type 3) binds BUB3 at kinetochores, linking the spindle assembly checkpoint to dynein-mediated poleward transport of checkpoint proteins",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "b2c3d4e5-2001-4bbb-c001-000000000001"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "CFAP47",
+        "db_refs": {}
+      },
+      {
+        "name": "HYDIN",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "CFAP47 interacts with HYDIN in the central apparatus of motile cilia, contributing to the structural integrity required for ciliary beat regulation",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "b2c3d4e5-2001-4bbb-c001-000000000002"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "OCRL",
+        "db_refs": {}
+      },
+      {
+        "name": "SSX2IP",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "OCRL recruits SSX2IP (ADIP) for microtubule anchoring at centrosomes; this complex links phosphoinositide metabolism to microtubule organising centre function",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "b2c3d4e5-2001-4bbb-c001-000000000003"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "EMD",
+        "db_refs": {}
+      },
+      {
+        "name": "TUBB",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "Emerin (EMD) binds beta-tubulin at the nuclear envelope, anchoring microtubules to the nucleus and facilitating nuclear positioning during cell migration",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "b2c3d4e5-2001-4bbb-c001-000000000004"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "DIAPH2",
+        "db_refs": {}
+      },
+      {
+        "name": "MAPRE1",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "DIAPH2 interacts with EB1 (MAPRE1) and APC at microtubule plus ends, coordinating formin-mediated actin nucleation with plus-end tracking for directional cell migration",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "b2c3d4e5-2001-4bbb-c001-000000000005"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "PRICKLE3",
+        "db_refs": {}
+      },
+      {
+        "name": "VANGL2",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "PRICKLE3 interacts with Vangl2 in the planar cell polarity pathway, establishing asymmetric microtubule arrays for directional intracellular transport",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "b2c3d4e5-2001-4bbb-c001-000000000006"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "KIF1A",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "SYP",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "KIF1A (kinesin-3) transports synaptophysin (SYP)-containing synaptic vesicle precursors along microtubules for anterograde delivery to presynaptic terminals",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "b2c3d4e5-2001-4bbb-c001-000000000007"
+  },
+  {
+    "type": "IncreaseAmount",
+    "subj": {
+      "name": "DDX3X",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "RAC1",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "DDX3X regulates RAC1 translation by resolving structured 5' UTR elements, increasing RAC1 protein abundance and promoting Rac1-dependent cytoskeletal remodelling for directed migration",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "b2c3d4e5-2001-4bbb-c001-000000000008"
+  }
+]

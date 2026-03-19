@@ -1,3 +1,83 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:5af69eb1da23f0d07d26f9c8c1ba5e5c9ab2b59447b90ad2a8c09c24f2a3543f
-size 2409
+[
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "PRKAR1A",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "PRKX",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "PRKX is selectively inhibited by type I regulatory subunits PRKAR1A and PRKAR1B but not by type II subunits PRKAR2A/PRKAR2B. This distinguishes PRKX from PRKACA, which associates with both RI and RII. The RI-selective binding means PJA1-mediated degradation of PRKAR1A directly de-represses PRKX",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "cAMP/PKA module",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ]
+  },
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "PRKAR1B",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "PRKX",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "PRKAR1B (type I-beta regulatory subunit) inhibits PRKX catalytic activity by forming a holoenzyme complex. PRKX is selective for RI subunits and does not interact with RII subunits (PRKAR2A/PRKAR2B), unlike the classical PRKACA catalytic subunit",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "cAMP/PKA module",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ]
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "PRKX",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "NEUROD1",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "PRKX promotes neuronal differentiation via cAMP-dependent signalling; drives renal epithelial tubulogenesis and neurite outgrowth in model systems. Aberrant recombination between PRKX (Xp22.3) and PRKY (Yp11.3) causes XX male sex reversal, underscoring the functional non-equivalence of these paralogs despite high sequence identity",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "PRKX neurodevelopment",
+          "directness": "indirect"
+        },
+        "epistemics": {
+          "hypothesis": true
+        }
+      }
+    ]
+  }
+]

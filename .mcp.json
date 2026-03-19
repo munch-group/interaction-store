@@ -1,3 +1,9 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:385d9c6a8bf2f3246ef2740954af8bbaa44d51aa9d6aaf331c444f283a85aa7f
-size 153
+{
+  "mcpServers": {
+    "interaction-store": {
+      "command": "python",
+      "args": ["mcp_server.py"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}

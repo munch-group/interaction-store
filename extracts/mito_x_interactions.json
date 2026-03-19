@@ -1,3 +1,312 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:a78d3d9f58ee5fa5a84df5ae52a309fb08a101135fdf75779cce269d57a264bd
-size 9051
+[
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "MRPS7",
+        "db_refs": {}
+      },
+      {
+        "name": "EIF1AX",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "MRPS7 (mitochondrial ribosomal protein S7) and EIF1AX (X-linked eukaryotic translation initiation factor 1A) form a co-complex physical interaction. STRING combined score 0.888, indicating high-confidence association linking mitochondrial and cytoplasmic translation.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Ribosome biogenesis",
+          "directness": "direct",
+          "string_score": 0.888
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-0001-4000-a000-000000000001",
+    "matches_hash": "mito_x_mrps7_eif1ax"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "GRSF1",
+        "db_refs": {}
+      },
+      {
+        "name": "RPS6KA3",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "GRSF1 (mitochondrial RNA granule protein) and RPS6KA3 (RSK2, X-linked kinase) show direct physical interaction. STRING experimental score 0.626. RSK2 may phosphorylate GRSF1, linking growth-factor signalling to mitochondrial RNA processing.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Mitochondrial RNA processing",
+          "directness": "direct",
+          "string_score_experimental": 0.626
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-0002-4000-a000-000000000002",
+    "matches_hash": "mito_x_grsf1_rps6ka3"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "GRSF1",
+        "db_refs": {}
+      },
+      {
+        "name": "HSD17B10",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "GRSF1 and HSD17B10 co-localize in mitochondrial RNA granules and are both components of the mitochondrial RNase P complex. HSD17B10 (X-linked) moonlights as a structural subunit of mt-RNase P required for tRNA processing.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Mitochondrial RNA processing",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-0003-4000-a000-000000000003",
+    "matches_hash": "mito_x_grsf1_hsd17b10"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "PNPT1",
+        "db_refs": {}
+      },
+      {
+        "name": "DKC1",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "PNPT1 (polynucleotide phosphorylase, mitochondrial RNA import/degradation) and DKC1 (X-linked dyskerin, telomerase/H/ACA snoRNP component) coordinate ribosome biogenesis. STRING coexpression score 0.411. Both are required for rRNA maturation in their respective compartments.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Ribosome biogenesis",
+          "directness": "indirect",
+          "string_score_coexpression": 0.411
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-0004-4000-a000-000000000004",
+    "matches_hash": "mito_x_pnpt1_dkc1"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "GRSF1",
+        "db_refs": {}
+      },
+      {
+        "name": "DDX3X",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "GRSF1 and DDX3X (X-linked DEAD-box RNA helicase) coordinate RNA metabolism. STRING textmining score 0.490. Both are RNA-binding proteins involved in post-transcriptional regulation; GRSF1 in mitochondrial RNA granules, DDX3X in cytoplasmic mRNP granules and stress granules.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Mitochondrial RNA processing",
+          "directness": "indirect",
+          "string_score_textmining": 0.490
+        },
+        "epistemics": {
+          "hypothesis": true
+        }
+      }
+    ],
+    "id": "a1b2c3d4-0005-4000-a000-000000000005",
+    "matches_hash": "mito_x_grsf1_ddx3x"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "PNPT1",
+        "db_refs": {}
+      },
+      {
+        "name": "DDX3X",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "PNPT1 and DDX3X coordinate RNA processing. STRING experimental score 0.230, coexpression score 0.303. PNPT1 imports small RNAs into mitochondria and degrades mitochondrial mRNAs; DDX3X is an X-linked DEAD-box helicase active in nuclear export and translation initiation.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Mitochondrial RNA processing",
+          "directness": "indirect",
+          "string_score_experimental": 0.230,
+          "string_score_coexpression": 0.303
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-0006-4000-a000-000000000006",
+    "matches_hash": "mito_x_pnpt1_ddx3x"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "PTCD1",
+        "db_refs": {}
+      },
+      {
+        "name": "RBMX",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "PTCD1 (pentatricopeptide repeat domain protein 1, mitochondrial RNA-binding) and RBMX (X-linked RNA-binding motif protein) show direct physical interaction. STRING experimental score 0.461. Links mitochondrial transcript processing to nuclear RNA splicing regulation.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Mitochondrial RNA processing",
+          "directness": "direct",
+          "string_score_experimental": 0.461
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-0007-4000-a000-000000000007",
+    "matches_hash": "mito_x_ptcd1_rbmx"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "MRPS7",
+        "db_refs": {}
+      },
+      {
+        "name": "UBQLN2",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "MRPS7 and UBQLN2 (X-linked ubiquilin-2, proteasomal shuttling factor) interact in protein quality control. STRING experimental score 0.302. UBQLN2 may target misfolded or excess mitochondrial ribosomal proteins for proteasomal degradation.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Ribosome biogenesis",
+          "directness": "direct",
+          "string_score_experimental": 0.302
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-0008-4000-a000-000000000008",
+    "matches_hash": "mito_x_mrps7_ubqln2"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "MRPS7",
+        "db_refs": {}
+      },
+      {
+        "name": "KDM5C",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "MRPS7 and KDM5C (X-linked histone H3K4 demethylase) show coexpression-based association. STRING coexpression score 0.361. KDM5C epigenetically regulates nuclear-encoded mitochondrial genes; coexpression may reflect coordinated mito-nuclear gene regulation.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Ribosome biogenesis",
+          "directness": "indirect",
+          "string_score_coexpression": 0.361
+        },
+        "epistemics": {
+          "hypothesis": true
+        }
+      }
+    ],
+    "id": "a1b2c3d4-0009-4000-a000-000000000009",
+    "matches_hash": "mito_x_mrps7_kdm5c"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "PNPT1",
+        "db_refs": {}
+      },
+      {
+        "name": "LAS1L",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "PNPT1 and LAS1L (X-linked ribosomal biogenesis factor) are linked by database-curated interaction. STRING database score 0.360. LAS1L is required for ITS2 cleavage in cytoplasmic pre-rRNA processing; PNPT1 handles mitochondrial RNA turnover, suggesting coordinated ribosome biogenesis across compartments.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Ribosome biogenesis",
+          "directness": "indirect",
+          "string_score_database": 0.360
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-0010-4000-a000-000000000010",
+    "matches_hash": "mito_x_pnpt1_las1l"
+  }
+]

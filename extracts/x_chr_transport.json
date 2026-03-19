@@ -1,3 +1,390 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:4e8fcb5c07312f8f6c67205d5472d156713c63fcb48418312a182569f9c5760e
-size 9650
+[
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "DCX",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "TTLL11",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "DCX promotes alpha-tubulin polyglutamylation by cooperating with TTLL11; polyglutamylation modulates motor protein binding and processivity on microtubules",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-000000000001"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "DCX",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "KIF1A",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "DCX binds kinesin-3 (KIF1A) motor domains and promotes anterograde cargo transport along microtubules",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-000000000002"
+  },
+  {
+    "type": "Inhibition",
+    "subj": {
+      "name": "DCX",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "DYNC1H1",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "DCX binds dynein complexes and negatively regulates retrograde transport by interfering with dynein heavy chain (DYNC1H1) processivity",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-000000000003"
+  },
+  {
+    "type": "Phosphorylation",
+    "enz": {
+      "name": "CDKL5",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "MAP1S",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "CDKL5 phosphorylates MAP1S, regulating its microtubule-stabilising activity and autophagosome transport",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-000000000004"
+  },
+  {
+    "type": "Phosphorylation",
+    "enz": {
+      "name": "CDKL5",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "MAPRE2",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "CDKL5 phosphorylates EB2 (MAPRE2), modulating its plus-end tracking activity and microtubule dynamics",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-000000000005"
+  },
+  {
+    "type": "Phosphorylation",
+    "enz": {
+      "name": "CDKL5",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "CLIP1",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "CDKL5 phosphorylates CLIP170 (CLIP1), regulating its microtubule plus-end tracking and dynein-mediated cargo loading",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-000000000006"
+  },
+  {
+    "type": "Phosphorylation",
+    "enz": {
+      "name": "PKA",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "DCX",
+      "db_refs": {}
+    },
+    "residue": "S",
+    "position": "47",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "PKA phosphorylates DCX at Ser47, reducing its microtubule-binding affinity and modulating neuronal migration",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-000000000007"
+  },
+  {
+    "type": "Ubiquitination",
+    "enz": {
+      "name": "KLHL15",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "DCX",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "KLHL15 is a Cullin-3 adaptor that ubiquitinates DCX, targeting it for proteasomal degradation and regulating neuronal migration",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-000000000008"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "NXF2",
+        "db_refs": {}
+      },
+      {
+        "name": "KIF17",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "NXF2 physically associates with KIF17, linking mRNA transport to kinesin-2-dependent microtubule-based trafficking in dendrites",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-000000000009"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "NXF2",
+        "db_refs": {}
+      },
+      {
+        "name": "MAP1B",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "NXF2 associates with MAP1B, coupling mRNA granule transport to the microtubule cytoskeleton",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-00000000000a"
+  },
+  {
+    "type": "Ubiquitination",
+    "enz": {
+      "name": "MID1",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "PPP2CA",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "MID1 (X-linked RING E3 ligase) ubiquitinates the catalytic subunit of PP2A (PPP2CA), targeting it for proteasomal degradation and regulating microtubule-associated phosphatase activity",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-00000000000b"
+  },
+  {
+    "type": "Ubiquitination",
+    "enz": {
+      "name": "MID2",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "SPAG5",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "MID2 (X-linked RING E3 ligase, paralog of MID1) ubiquitinates astrin (SPAG5), regulating spindle microtubule dynamics and kinetochore-MT attachment",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-00000000000c"
+  },
+  {
+    "type": "Phosphorylation",
+    "enz": {
+      "name": "AURKB",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "DIAPH2",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "Aurora B kinase (AURKB) phosphorylates DIAPH2 in its FH2 domain, regulating formin-mediated actin nucleation and microtubule stabilisation at the cell cortex",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-00000000000d"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "CEP76",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "AKAP4",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "CEP76 regulates AKAP4 entry into the flagellum during spermiogenesis, controlling manchette-to-flagellum transport of the PKA-scaffolding fibrous sheath component",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "X-linked MT transport regulation",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        }
+      }
+    ],
+    "id": "a1b2c3d4-1001-4aaa-b001-00000000000e"
+  }
+]

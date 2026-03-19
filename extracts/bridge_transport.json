@@ -1,3 +1,246 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:654e5f66c977a5986b9615d259e6c83e67b1d6eb33c960799256d386ebe903a4
-size 6791
+[
+  {
+    "type": "Gef",
+    "gef": {
+      "name": "IQSEC2",
+      "db_refs": {}
+    },
+    "ras": {
+      "name": "ARF6",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "IQSEC2 (X-linked) is a guanine nucleotide exchange factor (ArfGEF) for ARF6, catalysing GDP-to-GTP exchange. ARF6-GTP is essential for intercellular bridge membrane remodelling during spermatogenesis.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Spermatid bridge transport",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 3817264501928374651
+      }
+    ],
+    "id": "a1d3e7b0-5c42-4f8a-b1e3-9a7c2d4f6e80",
+    "matches_hash": "18273645091827364"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "TEX14",
+        "db_refs": {}
+      },
+      {
+        "name": "CEP55",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "TEX14 binds CEP55 with Kd ~300 nM. This interaction is essential for intercellular bridge formation in spermatogenesis; TEX14 prevents abscission by blocking the normal CEP55-mediated recruitment of ESCRT machinery.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Spermatid bridge transport",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 5924173608413927504
+      }
+    ],
+    "id": "b2e4f8c1-6d53-4a9b-c2f4-0b8d3e5a7f91",
+    "matches_hash": "27364518092736451"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "VSIG1",
+        "db_refs": {}
+      },
+      {
+        "name": "TJP1",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "VSIG1 binds ZO-1 (TJP1) via a C-terminal PDZ-binding motif. This interaction localises to intercellular bridges in spermatids and is required for bridge structural integrity.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Spermatid bridge transport",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 7183624590271839405
+      }
+    ],
+    "id": "c3f5a9d2-7e64-4bac-d3a5-1c9e4f6b8a02",
+    "matches_hash": "36451827093645182"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "DYNLT3",
+        "db_refs": {}
+      },
+      {
+        "name": "DYNC1I1",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "DYNLT3 (Tctex-type dynein light chain, X-linked) binds dynein intermediate chain DYNC1I1, integrating into the cytoplasmic dynein-1 complex. This subunit interaction is required for cargo-specific dynein recruitment at intercellular bridges.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Spermatid bridge transport",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 8294735601382940516
+      }
+    ],
+    "id": "d4a6bae3-8f75-4cbd-e4b6-2daf5a7c9b13",
+    "matches_hash": "45182736094518273"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "DYNLT3",
+        "db_refs": {}
+      },
+      {
+        "name": "DYNC1I2",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "DYNLT3 (Tctex-type dynein light chain, X-linked) binds dynein intermediate chain DYNC1I2, an alternative intermediate chain isoform in the cytoplasmic dynein-1 complex.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Spermatid bridge transport",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 9305846712493051627
+      }
+    ],
+    "id": "e5b7cbe4-9a86-4dce-f5c7-3eb06b8d0c24",
+    "matches_hash": "54182736095418273"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "UPF3B",
+        "db_refs": {}
+      },
+      {
+        "name": "UPF2",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "UPF3B (X-linked) forms a complex with UPF2 as part of the NMD surveillance machinery. In spermatids, the UPF3B–UPF2 complex localises to chromatoid bodies and participates in mRNA transport across intercellular bridges.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Spermatid bridge transport",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 1416957823504162738
+      }
+    ],
+    "id": "f6c8dcf5-ab97-4edf-a6d8-4fc17c9e1d35",
+    "matches_hash": "63718294095637182"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "SYTL5",
+        "db_refs": {}
+      },
+      {
+        "name": "RAB27A",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "SYTL5 (X-linked) is a RAB27A effector containing tandem C2 domains. The SYTL5–RAB27A-GTP complex mediates vesicle docking at the plasma membrane, relevant to acrosome biogenesis and intercellular bridge vesicle trafficking in spermatids.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Spermatid bridge transport",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 2527068934615273849
+      }
+    ],
+    "id": "a7d9eda6-bc08-4fea-b7e9-5ad28daf2e46",
+    "matches_hash": "72918364096729183"
+  },
+  {
+    "type": "Ubiquitination",
+    "enz": {
+      "name": "HUWE1",
+      "db_refs": {}
+    },
+    "sub": {
+      "name": "WT1",
+      "db_refs": {}
+    },
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "HUWE1 (X-linked HECT E3 ligase) ubiquitinates WT1, targeting it for proteasomal degradation. WT1 is a transcription factor essential for Sertoli cell function; HUWE1-mediated turnover regulates the timing of spermatogenic support.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Spermatid bridge transport",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 3638179045726384950
+      }
+    ],
+    "id": "b8eafeb7-cd19-4afb-c8fa-6be39eba3f57",
+    "matches_hash": "81927364097819273"
+  }
+]

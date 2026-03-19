@@ -1,3 +1,106 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:9e4f2f68d52f78e18713fd88d4f55f7981d3f66d17f02408ca3783541a5db92b
-size 3777
+[
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "TTLL11",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "TUBA1A",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "TTLL11 is a tubulin polyglutamylase that adds glutamate side-chains to alpha-tubulin. This post-translational modification (polyglutamylation) modulates microtubule stability and motor protein recruitment. Encoded as Activation because INDRA lacks a Glutamylation statement type; the actual mechanism is enzymatic polyglutamylation. TTLL11 is inactivated (pseudogenised) in humans but functional in other great apes, making this a fossil interaction relevant to the meiotic drive hypothesis.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Meiotic drive / tubulin code",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 7291034856123948201
+      },
+      {
+        "source_api": "manual",
+        "text": "TTLL11 inactivation in humans may have been driven by meiotic drive: loss of polyglutamylation on spindle MTs could alter chromosome segregation fidelity or sperm motility, providing a selective advantage to the inactivating allele in the context of sex-chromosome conflict.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Meiotic drive / tubulin code",
+          "directness": "indirect"
+        },
+        "epistemics": {
+          "hypothesis": true
+        },
+        "source_hash": 3847261509843712654
+      }
+    ],
+    "id": "a1e7c3d4-9b2f-4e8a-b6d1-3c4f5a8e9d01",
+    "matches_hash": "18273645091827364"
+  },
+  {
+    "type": "Complex",
+    "members": [
+      {
+        "name": "TTLL11",
+        "db_refs": {}
+      },
+      {
+        "name": "CCSAP",
+        "db_refs": {}
+      }
+    ],
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "TTLL11 interacts with CCSAP (centriole, cilia and spindle-associated protein) for its localisation to spindle and ciliary microtubules. CCSAP recruits TTLL11 to its substrates, enabling site-specific polyglutamylation of the tubulin lattice. This interaction is conserved across mammals though TTLL11 is inactivated in humans.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Meiotic drive / tubulin code",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 5619283740561928374
+      }
+    ],
+    "id": "b2f8d4e5-0c3a-5f9b-c7e2-4d5a6b9f0e12",
+    "matches_hash": "29384756102938475"
+  },
+  {
+    "type": "Activation",
+    "subj": {
+      "name": "TTLL5",
+      "db_refs": {}
+    },
+    "obj": {
+      "name": "RPGR",
+      "db_refs": {}
+    },
+    "obj_activity": "activity",
+    "belief": 1,
+    "evidence": [
+      {
+        "source_api": "manual",
+        "text": "TTLL5 glutamylates RPGR (retinitis pigmentosa GTPase regulator, X-linked at Xp11.4). RPGR requires polyglutamylation by TTLL5 for its function in ciliary trafficking in photoreceptors. Encoded as Activation because INDRA lacks a Glutamylation statement type; the actual mechanism is enzymatic polyglutamylation. Loss of TTLL5 function phenocopies RPGR mutations, causing retinal degeneration.",
+        "annotations": {
+          "date": "2026-03-12",
+          "context": "Meiotic drive / tubulin code",
+          "directness": "direct"
+        },
+        "epistemics": {
+          "hypothesis": false
+        },
+        "source_hash": 8734920156873492015
+      }
+    ],
+    "id": "c3a9e5f6-1d4b-6a0c-d8f3-5e6b7c0a1f23",
+    "matches_hash": "30495867213049586"
+  }
+]
