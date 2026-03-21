@@ -1265,6 +1265,24 @@
       }
     ]
   },
+  "CACNA1C": {
+    "analysis_origin": {
+      "note": "Upstream of CAMK2A-mediated tau phosphorylation via Ca2+ influx; phosphorylated by PRKACA",
+      "source": "literature"
+    },
+    "chromosome": "auto",
+    "coordinates": {
+      "hg38": {
+        "chrom": "chr12",
+        "end": 2697950,
+        "start": 1970779
+      }
+    },
+    "groups": [
+      "signalling/ion channel"
+    ],
+    "notes": "L-type voltage-gated calcium channel; PKA substrate; Ca2+ influx activates CAMK2A"
+  },
   "CACNA1F": {
     "analysis_origin": {
       "analysis": "hum_nean_admix",
@@ -1280,7 +1298,8 @@
       }
     },
     "groups": [
-      "hum_nean_admix"
+      "hum_nean_admix",
+      "signalling/ion channel"
     ],
     "references": [
       {

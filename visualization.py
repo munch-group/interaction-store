@@ -1394,7 +1394,6 @@ def circos_plot(stmts, reg, cmap='shifted_hsv', scalings={}, assembly='hg38',
 
     ColorCycler.set_cmap(cmap)
     sector_lengths = chrom_lengths[assembly].copy()
-    sector_lengths['chrX'] *= 10
     circos = Circos(sectors=sector_lengths, space=3)
     chr_names = [s.name for s in circos.sectors]
     colors = ColorCycler.get_color_list(len(chr_names))
@@ -1411,7 +1410,7 @@ def circos_plot(stmts, reg, cmap='shifted_hsv', scalings={}, assembly='hg38',
             ]
     gene_labels = defaultdict(list)
     for name, (chrom, start, end) in gene_coordinates.items():
-        gene_labels[chrom].append([(start+end)/2 * scalings.get(chrom, 1), name])
+        gene_labels[chrom].append([int((start+end)/2 * scalings.get(chrom, 1)), name])
 
     for sector in circos.sectors:
         sector.text(sector.name, r=105, size=8, color=chr_name2color[sector.name])
@@ -1433,10 +1432,10 @@ def circos_plot(stmts, reg, cmap='shifted_hsv', scalings={}, assembly='hg38',
         a, b = agent_list
         if a and b and a.name in gene_coordinates and b.name in gene_coordinates:
             _from, _to = gene_coordinates[a.name], gene_coordinates[b.name]
-            print(_from[0], _to[0], scalings.get(_from[0], 1), scalings.get(_to[0], 1))
-            _from[2] *= scalings.get(_from[0], 1)
-            _to[1] *= scalings.get(_to[0], 1)
-            _to[2] *= scalings.get(_to[0], 1)
+            # print(_from[0], _to[0], scalings.get(_from[0], 1), scalings.get(_to[0], 1))
+            # _from[2] *= scalings.get(_from[0], 1)
+            # _to[1] *= scalings.get(_to[0], 1)
+            # _to[2] *= scalings.get(_to[0], 1)
             color = chr_name2color[_from[0]]
             circos.link(_from, _to,
                         color=color,
