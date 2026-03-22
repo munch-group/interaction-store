@@ -1390,10 +1390,15 @@ except ValueError:
     pass
 
 def circos_plot(stmts, reg, cmap='shifted_hsv', scalings={}, assembly='hg38',
-        ideogram_base = 97, ideogram_height = 3, figsize = (8, 8)):
+        ideogram_base = 97, ideogram_height = 3, figsize = (8, 8), include_complex=True, link_kwargs={}):
+
+    _link_kwargs = dict(lw=0.5, alpha=1, zorder=0)
+    _link_kwargs.update(link_kwargs)
 
     ColorCycler.set_cmap(cmap)
-    sector_lengths = chrom_lengths[assembly].copy()
+    # sector_lengths = chrom_lengths[assembly].copy()
+    sector_lengths = {chrom: length * scalings.get(chrom, 1) for chrom, length in chrom_lengths[assembly].items()}
+    
     circos = Circos(sectors=sector_lengths, space=3)
     chr_names = [s.name for s in circos.sectors]
     colors = ColorCycler.get_color_list(len(chr_names))
@@ -1411,6 +1416,7 @@ def circos_plot(stmts, reg, cmap='shifted_hsv', scalings={}, assembly='hg38',
     gene_labels = defaultdict(list)
     for name, (chrom, start, end) in gene_coordinates.items():
         gene_labels[chrom].append([int((start+end)/2 * scalings.get(chrom, 1)), name])
+#        gene_labels[chrom].append([(start+end)/2, name])
 
     for sector in circos.sectors:
         sector.text(sector.name, r=105, size=8, color=chr_name2color[sector.name])
@@ -1426,21 +1432,36 @@ def circos_plot(stmts, reg, cmap='shifted_hsv', scalings={}, assembly='hg38',
         agent_list = st.agent_list()
         if len(agent_list) < 2:
             continue
-        if len(agent_list) > 2:
-            print(f'More than than 2 agents in statement, skipping: {" ".join(a.name for a in agent_list if a)}')
-            continue        
-        a, b = agent_list
-        if a and b and a.name in gene_coordinates and b.name in gene_coordinates:
-            _from, _to = gene_coordinates[a.name], gene_coordinates[b.name]
-            # print(_from[0], _to[0], scalings.get(_from[0], 1), scalings.get(_to[0], 1))
-            # _from[2] *= scalings.get(_from[0], 1)
-            # _to[1] *= scalings.get(_to[0], 1)
-            # _to[2] *= scalings.get(_to[0], 1)
-            color = chr_name2color[_from[0]]
-            circos.link(_from, _to,
-                        color=color,
-                        lw=0.5,
-                        alpha=1,
-                        zorder=0)
+        is_complext = type(st).__name__ == 'Complex'
+        if is_complext and not include_complex:
+            continue
+        # if len(agent_list) > 2:
+        #     print(f'More than than 2 agents in statement, skipping: {" ".join(a.name for a in agent_list if a)}')
+        #     continue        
+        from itertools import combinations_with_replacement
+        for a, b in combinations_with_replacement(agent_list, 2):
+            # for a, b in combinations(agent_list, 2):
+            # a, b = agent_list
+            if a and b and a.name in gene_coordinates and b.name in gene_coordinates:
+                _from, _to = gene_coordinates[a.name], gene_coordinates[b.name]
+                _from = (_from[0], _from[1]*scalings.get(_from[0], 1), _from[2]*scalings.get(_from[0], 1))
+                _to = (_to[0], _to[1]*scalings.get(_to[0], 1), _to[2]*scalings.get(_to[0], 1))
+                kwargs = _link_kwargs.copy()
+                if 'color' not in kwargs:
+                    kwargs['color'] = chr_name2color[_from[0]]
+                if 'ls' not in kwargs and 'linestyle' not in kwargs:
+                    kwargs['linestyle'] = 'dashed' if is_complext else 'solid'
+                # print(_from, _to)
+                # print(_from[0], _to[0], scalings.get(_from[0], 1), scalings.get(_to[0], 1))
+                # _from[1] *= scalings.get(_from[0], 1)
+                # _from[2] *= scalings.get(_from[0], 1)
+                # _to[1] *= scalings.get(_to[0], 1)
+                # _to[2] *= scalings.get(_to[0], 1)
+                # color = chr_name2color[_from[0]]
+                # print(_from, _to)
+                # print()
+                circos.link(_from, 
+                            _to,
+                            **kwargs)
 
     fig = circos.plotfig(figsize=figsize)
