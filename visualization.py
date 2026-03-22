@@ -46,6 +46,7 @@ from contextlib import redirect_stderr
 import io
 import math
 import base64
+from itertools import combinations
 import graph_tool.all as gt
 
 # ── default colour / style constants ─────────────────────────────────────────
@@ -1389,8 +1390,13 @@ except ValueError:
     # already registered, ignore
     pass
 
-def circos_plot(stmts, reg, cmap='shifted_hsv', scalings={}, assembly='hg38',
-        ideogram_base = 97, ideogram_height = 3, figsize = (8, 8), include_complex=True, link_kwargs={}):
+def circos_plot(stmts, #reg, 
+                ax=None,
+                cmap='shifted_hsv', scalings={}, assembly='hg38',
+        ideogram_base = 97, ideogram_height = 3, figsize = (8, 8), link_kwargs={}):
+
+    import matplotlib.pyplot as plt
+    from geneinfo.coords import gene_coords
 
     _link_kwargs = dict(lw=0.5, alpha=1, zorder=0)
     _link_kwargs.update(link_kwargs)
@@ -1406,13 +1412,17 @@ def circos_plot(stmts, reg, cmap='shifted_hsv', scalings={}, assembly='hg38',
 
     label_genes = set([a.name for st in stmts for a in st.agent_list() if a])
     gene_coordinates = {}
-    for name, data in reg.items():
-        if name in label_genes and 'coordinates' in data:
-            gene_coordinates[name] = [
-                data['coordinates'][assembly]['chrom'],
-                data['coordinates'][assembly]['start'],
-                data['coordinates'][assembly]['end']
-            ]
+    for chrom, start, end, name in gene_coords(label_genes, assembly=assembly):
+        gene_coordinates[name] = (chrom, start, end)
+
+    # gene_coordinates = {}
+    # for name, data in reg.items():
+    #     if name in label_genes and 'coordinates' in data:
+    #         gene_coordinates[name] = [
+    #             data['coordinates'][assembly]['chrom'],
+    #             data['coordinates'][assembly]['start'],
+    #             data['coordinates'][assembly]['end']
+    #         ]
     gene_labels = defaultdict(list)
     for name, (chrom, start, end) in gene_coordinates.items():
         gene_labels[chrom].append([int((start+end)/2 * scalings.get(chrom, 1)), name])
@@ -1431,15 +1441,13 @@ def circos_plot(stmts, reg, cmap='shifted_hsv', scalings={}, assembly='hg38',
     for st in stmts:
         agent_list = st.agent_list()
         if len(agent_list) < 2:
+            print(f'Warning: statement with fewer than 2 agents, skipping: {st}')
             continue
-        is_complext = type(st).__name__ == 'Complex'
-        if is_complext and not include_complex:
-            continue
+        is_complex = type(st).__name__ == 'Complex'
         # if len(agent_list) > 2:
         #     print(f'More than than 2 agents in statement, skipping: {" ".join(a.name for a in agent_list if a)}')
         #     continue        
-        from itertools import combinations_with_replacement
-        for a, b in combinations_with_replacement(agent_list, 2):
+        for a, b in combinations(agent_list, 2):
             # for a, b in combinations(agent_list, 2):
             # a, b = agent_list
             if a and b and a.name in gene_coordinates and b.name in gene_coordinates:
@@ -1448,20 +1456,16 @@ def circos_plot(stmts, reg, cmap='shifted_hsv', scalings={}, assembly='hg38',
                 _to = (_to[0], _to[1]*scalings.get(_to[0], 1), _to[2]*scalings.get(_to[0], 1))
                 kwargs = _link_kwargs.copy()
                 if 'color' not in kwargs:
-                    kwargs['color'] = chr_name2color[_from[0]]
-                if 'ls' not in kwargs and 'linestyle' not in kwargs:
-                    kwargs['linestyle'] = 'dashed' if is_complext else 'solid'
-                # print(_from, _to)
-                # print(_from[0], _to[0], scalings.get(_from[0], 1), scalings.get(_to[0], 1))
-                # _from[1] *= scalings.get(_from[0], 1)
-                # _from[2] *= scalings.get(_from[0], 1)
-                # _to[1] *= scalings.get(_to[0], 1)
-                # _to[2] *= scalings.get(_to[0], 1)
-                # color = chr_name2color[_from[0]]
-                # print(_from, _to)
-                # print()
+                    kwargs['color'] = 'gray' if is_complex else chr_name2color[_from[0]                                                                               ]
+                else:
+                    if 'ls' in kwargs or 'linestyle' in kwargs:
+                        print('Warning: linestyle specified in link_kwargs will be overridden for Complex statements to ensure they are dashed.')
+                    kwargs['linestyle'] = (0, (5, 5)) if is_complex else 'solid'
                 circos.link(_from, 
                             _to,
                             **kwargs)
 
-    fig = circos.plotfig(figsize=figsize)
+    if ax is None:
+        fig = plt.figure(figsize=figsize, tight_layout=True)
+        ax = fig.add_subplot(projection="polar")
+    fig = circos.plotfig(ax=ax)
